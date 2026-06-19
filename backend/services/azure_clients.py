@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from functools import lru_cache
-from typing import Optional
+from typing import Generator, List, Optional
 from openai import AzureOpenAI
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
@@ -49,7 +51,24 @@ def chat(messages: list[dict], max_tokens: int = 2000) -> str:
     return resp.choices[0].message.content
 
 
-def rag_search(query: str, top: int = 5, reviewer_filter: Optional[str] = None) -> list[dict]:
+def stream_chat(messages: List[dict], max_tokens: int = 2000) -> Generator[str, None, None]:
+    """SSE 스트리밍용 — 토큰 단위로 yield한다."""
+    s = get_settings()
+    client = get_openai_client()
+    stream = client.chat.completions.create(
+        model=s.azure_openai_chat_deployment,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=0.3,
+        stream=True,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta if chunk.choices else None
+        if delta and delta.content:
+            yield delta.content
+
+
+def rag_search(query: str, top: int = 5, reviewer_filter: Optional[str] = None) -> List[dict]:
     """하이브리드 검색 (키워드 + 벡터). reviewer_filter로 특정 심사역 사례만 조회 가능."""
     search_client = get_search_client()
     vector_query = VectorizedQuery(

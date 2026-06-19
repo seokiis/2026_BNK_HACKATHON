@@ -6,7 +6,8 @@ app = FastAPI(title="AI 여신심사 어시스턴트 API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=["http://localhost:3000", "null", "*"],  # React dev server + HTML 직접 열기
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

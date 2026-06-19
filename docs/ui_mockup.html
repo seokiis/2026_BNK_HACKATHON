@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>AI 여신심사 어시스턴트 — BNK 경남은행</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary:    #1B4F8A;
+    --primary-lt: #2563AB;
+    --approve:    #2E7D32;
+    --danger:     #C62828;
+    --warning:    #E65100;
+    --text:       #37474F;
+    --text-lt:    #607D8B;
+    --bg:         #F5F7FA;
+    --surface:    #FFFFFF;
+    --border:     #CFD8DC;
+    --grade-h-bg: #E8F5E9; --grade-h-tx: #2E7D32;
+    --grade-m-bg: #FFF3E0; --grade-m-tx: #E65100;
+    --grade-l-bg: #FFEBEE; --grade-l-tx: #C62828;
+    --data-ok-bg: #E8F5E9; --data-ok-tx: #2E7D32;
+    --data-ft-bg: #FFF3E0; --data-ft-tx: #E65100;
+    --data-ms-bg: #FFEBEE; --data-ms-tx: #C62828;
+  }
+
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    min-width: 1280px;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--primary);
+    color: #fff;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .app-header .logo {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+  }
+  .app-header .logo span { color: #7EB3FF; }
+  .app-header .divider { width: 1px; height: 20px; background: rgba(255,255,255,.3); }
+  .app-header .subtitle { font-size: 13px; color: rgba(255,255,255,.75); }
+  .app-header .spacer { flex: 1; }
+  .app-header .user-info { font-size: 12px; color: rgba(255,255,255,.8); }
+
+  /* ── STEP BAR ── */
+  .step-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    height: 52px;
+    gap: 0;
+  }
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    height: 52px;
+    cursor: pointer;
+    position: relative;
+    font-size: 13px;
+    color: var(--text-lt);
+    white-space: nowrap;
+    transition: color .15s;
+  }
+  .step-item:hover { color: var(--primary); }
+  .step-item.active { color: var(--primary); font-weight: 600; }
+  .step-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--primary);
+  }
+  .step-item.done { color: var(--approve); }
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    background: var(--border);
+    color: var(--text-lt);
+    flex-shrink: 0;
+  }
+  .step-item.active .step-num { background: var(--primary); color: #fff; }
+  .step-item.done .step-num { background: var(--approve); color: #fff; }
+  .step-arrow { color: var(--border); font-size: 12px; padding: 0 4px; }
+
+  /* ── MAIN CONTENT ── */
+  .main-content {
+    padding: 24px;
+    min-height: calc(100vh - 104px);
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon { font-size: 16px; }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; gap: 16px; }
+  .form-grid-2 { grid-template-columns: 1fr 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-lt);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+  }
+  .form-label .required { color: var(--danger); margin-left: 2px; }
+  .form-control {
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(27,79,138,.12);
+  }
+  select.form-control { cursor: pointer; }
+  .form-hint { font-size: 11px; color: var(--text-lt); }
+  .form-error { font-size: 11px; color: var(--danger); display: none; }
+
+  /* ── ASSIGNED REVIEWER BANNER ── */
+  .reviewer-banner {
+    background: #EEF4FF;
+    border: 1px solid #B3CCFF;
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .reviewer-banner .rv-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .reviewer-banner .rv-label { font-size: 11px; color: var(--text-lt); }
+  .reviewer-banner .rv-name { font-size: 15px; font-weight: 600; color: var(--primary); }
+  .reviewer-banner .rv-sub { font-size: 12px; color: var(--text-lt); margin-top: 2px; }
+  .reviewer-banner .rv-tag {
+    margin-left: auto;
+    background: #D0E8FF;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* ── UPLOAD AREA ── */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--primary);
+    background: #EEF4FF;
+  }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-title { font-weight: 600; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--text-lt); }
+  .upload-tag {
+    display: inline-block;
+    margin-top: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    color: var(--text-lt);
+  }
+  .file-list { margin-top: 10px; }
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border-radius: 4px;
+    margin-top: 4px;
+    font-size: 12px;
+  }
+  .file-item .file-icon { color: var(--primary); }
+  .file-item .file-name { flex: 1; }
+  .file-item .file-size { color: var(--text-lt); }
+  .file-item .file-ok { color: var(--approve); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-lt); }
+  .btn-success { background: var(--approve); color: #fff; }
+  .btn-success:hover { background: #1B5E20; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #8B0000; }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-warning { background: var(--warning); color: #fff; }
+  .btn-warning:hover { background: #BF360C; }
+  .btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
+  .btn-lg { height: 44px; padding: 0 24px; font-size: 15px; }
+
+  /* ── SCREEN 1 LAYOUT ── */
+  .s1-layout { display: grid; grid-template-columns: 1fr 420px; gap: 20px; }
+
+  /* ── SCREEN 2: AI DISCUSSION ── */
+  .discussion-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: calc(100vh - 160px); }
+  .agent-list { display: flex; flex-direction: column; gap: 8px; }
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .agent-card.speaking {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(27,79,138,.15);
+  }
+  .agent-card.done { opacity: .6; }
+  .agent-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .agent-name { font-size: 13px; font-weight: 600; }
+  .agent-role { font-size: 11px; color: var(--text-lt); }
+  .agent-status {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .status-speaking { background: #EEF4FF; color: var(--primary); }
+  .status-done { background: var(--grade-h-bg); color: var(--approve); }
+  .status-wait { background: var(--bg); color: var(--text-lt); }
+
+  .chat-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .chat-header .ch-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .round-badge {
+    background: #EEF4FF;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .progress-wrap { padding: 10px 18px; border-bottom: 1px solid var(--border); }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-lt);
+    margin-bottom: 6px;
+  }
+  .progress-bar-bg {
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), #4A90D9);
+    border-radius: 3px;
+    transition: width .4s ease;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .bubble-wrap { display: flex; align-items: flex-start; gap: 10px; }
+  .bubble-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .bubble-body { max-width: 75%; }
+  .bubble-meta { font-size: 11px; color: var(--text-lt); margin-bottom: 4px; }
+  .bubble {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0 10px 10px 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .bubble.chairman { border-color: var(--primary); background: #EEF4FF; }
+  .bubble.critic { border-color: var(--danger); background: #FFF5F5; }
+  .bubble-typing {
+    display: flex; gap: 4px; align-items: center; padding: 12px 14px;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-lt);
+    animation: bounce .9s infinite;
+  }
+  .dot:nth-child(2) { animation-delay: .15s; }
+  .dot:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* ── SCREEN 3: REVIEW ITEMS ── */
+  .review-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+  .items-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .item-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .item-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .item-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .item-name { font-size: 15px; font-weight: 600; flex: 1; }
+  .badge-row { display: flex; gap: 6px; align-items: center; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: default;
+    position: relative;
+    transition: all .15s;
+  }
+
+  /* grade badges */
+  .badge-h { background: var(--grade-h-bg); color: var(--grade-h-tx); }
+  .badge-m { background: var(--grade-m-bg); color: var(--grade-m-tx); }
+  .badge-l { background: var(--grade-l-bg); color: var(--grade-l-tx); }
+
+  /* data badges */
+  .badge-ok   { background: var(--data-ok-bg); color: var(--data-ok-tx); }
+  .badge-lack { background: var(--data-ft-bg); color: var(--data-ft-tx); }
+  .badge-miss { background: var(--data-ms-bg); color: var(--data-ms-tx); }
+
+  /* hover → reinforce button */
+  .badge-reinforce-wrap { position: relative; display: inline-flex; }
+  .badge-reinforce-wrap .badge { transition: opacity .15s; }
+  .badge-reinforce-wrap .reinforce-btn {
+    display: none;
+    position: absolute;
+    inset: 0;
+    border: none;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 0 10px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all .15s;
+  }
+  .reinforce-btn.risk { background: var(--danger); color: #fff; }
+  .reinforce-btn.data { background: var(--warning); color: #fff; }
+  .badge-reinforce-wrap:hover .badge { opacity: 0; }
+  .badge-reinforce-wrap:hover .reinforce-btn { display: flex; }
+
+  .item-chevron { color: var(--text-lt); font-size: 12px; transition: transform .2s; }
+  .item-card.open .item-chevron { transform: rotate(180deg); }
+
+  .item-body { display: none; padding: 16px 18px; }
+  .item-card.open .item-body { display: block; }
+
+  .opinion-textarea {
+    width: 100%;
+    min-height: 100px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .opinion-textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(27,79,138,.1);
+  }
+  .ai-hint {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #FFFDE7;
+    border: 1px solid #FFF176;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #795548;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-hint.show { display: flex; }
+  .ai-hint .ai-icon { font-size: 14px; flex-shrink: 0; }
+
+  .evidence-section { margin-top: 14px; }
+  .evidence-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-lt);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    margin-bottom: 8px;
+  }
+  .evidence-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .evidence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: #EEF4FF;
+    border: 1px solid #B3CCFF;
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--primary);
+    cursor: pointer;
+    transition: background .15s;
+    position: relative;
+  }
+  .evidence-chip:hover { background: #D0E8FF; }
+  .evidence-chip .chip-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    background: #263238;
+    color: #fff;
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 280px;
+    line-height: 1.5;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .evidence-chip:hover .chip-tooltip { display: block; }
+
+  /* ── SIDE PANEL ── */
+  .side-panel { display: flex; flex-direction: column; gap: 16px; }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .summary-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-lt);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    margin-bottom: 12px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--bg);
+    font-size: 13px;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-key { color: var(--text-lt); }
+  .summary-val { font-weight: 600; }
+
+  .doc-list { display: flex; flex-direction: column; gap: 6px; }
+  .doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .doc-item .doc-icon { font-size: 14px; flex-shrink: 0; }
+  .doc-item .doc-name { flex: 1; }
+  .doc-item .doc-status { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+  .doc-status-ok { background: var(--grade-h-bg); color: var(--approve); }
+  .doc-status-warn { background: var(--grade-m-bg); color: var(--warning); }
+  .doc-status-err { background: var(--grade-l-bg); color: var(--danger); }
+
+  /* ── SCREEN 4: SUBMIT ── */
+  .submit-layout { max-width: 900px; margin: 0 auto; }
+  .comprehensive-textarea {
+    width: 100%;
+    min-height: 200px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .comprehensive-textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(27,79,138,.1);
+  }
+  .ai-draft-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #FFF8E1;
+    border: 1px solid #FFE082;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #795548;
+    padding: 3px 8px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .action-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 20px 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    position: sticky;
+    bottom: 0;
+  }
+  .action-bar .spacer { flex: 1; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    max-width: 800px;
+    width: 90%;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-title { font-size: 17px; font-weight: 700; flex: 1; }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-lt);
+    transition: background .15s;
+  }
+  .modal-close:hover { background: var(--border); }
+  .modal-body {
+    overflow-y: auto;
+    padding: 24px;
+    flex: 1;
+  }
+
+  /* preview content */
+  .preview-header {
+    text-align: center;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+  }
+  .preview-bank { font-size: 13px; color: var(--text-lt); margin-bottom: 4px; }
+  .preview-title { font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+  .preview-meta { font-size: 12px; color: var(--text-lt); }
+  .preview-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .preview-info-cell {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 6px;
+  }
+  .preview-info-cell .pik { font-weight: 600; color: var(--text-lt); white-space: nowrap; }
+  .preview-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    border-left: 3px solid var(--primary);
+    padding-left: 10px;
+    margin: 16px 0 10px;
+  }
+  .preview-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .preview-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .preview-item-body {
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  /* ── CONFIRM DIALOG ── */
+  .confirm-modal { max-width: 440px; }
+  .confirm-icon { font-size: 40px; text-align: center; margin-bottom: 12px; }
+  .confirm-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+  .confirm-body { font-size: 14px; color: var(--text-lt); text-align: center; line-height: 1.6; }
+  .confirm-notice {
+    margin-top: 14px;
+    padding: 12px;
+    background: #FFF5F5;
+    border: 1px solid #FFCDD2;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--danger);
+    text-align: center;
+  }
+
+  /* ── REINFORCE LOADING ── */
+  .reinforce-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+  }
+  .reinforce-overlay.show { display: flex; }
+  .reinforce-box {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 32px 40px;
+    text-align: center;
+    box-shadow: 0 16px 48px rgba(0,0,0,.2);
+    min-width: 360px;
+  }
+  .reinforce-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .reinforce-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .reinforce-sub { font-size: 13px; color: var(--text-lt); }
+  .reinforce-steps {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .reinforce-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-lt);
+    padding: 6px 10px;
+    border-radius: 4px;
+  }
+  .reinforce-step.active { background: #EEF4FF; color: var(--primary); font-weight: 600; }
+  .reinforce-step.done { color: var(--approve); }
+
+  /* ── SUCCESS TOAST ── */
+  .toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #263238;
+    color: #fff;
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 400;
+    box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    align-items: center;
+    gap: 10px;
+    animation: slideIn .2s ease;
+  }
+  .toast.show { display: flex; }
+  @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .toast-icon { font-size: 18px; }
+
+  /* ── SUBMIT SUCCESS ── */
+  .success-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    text-align: center;
+  }
+  .success-icon { font-size: 64px; margin-bottom: 20px; }
+  .success-title { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+  .success-body { font-size: 15px; color: var(--text-lt); line-height: 1.7; margin-bottom: 28px; max-width: 500px; }
+  .success-ticket {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 32px;
+    min-width: 380px;
+    text-align: left;
+  }
+  .ticket-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 14px;
+  }
+  .ticket-row:last-child { border-bottom: none; }
+  .ticket-key { color: var(--text-lt); }
+  .ticket-val { font-weight: 600; }
+
+  /* ── UTIL ── */
+  .flex { display: flex; }
+  .flex-col { display: flex; flex-direction: column; }
+  .items-center { align-items: center; }
+  .gap-8 { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .mb-8 { margin-bottom: 8px; }
+  .text-sm { font-size: 12px; }
+  .text-muted { color: var(--text-lt); }
+  .font-600 { font-weight: 600; }
+  .w-full { width: 100%; }
+
+  .info-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #EEF4FF;
+    color: var(--primary);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #B0BEC5; }
+</style>
+</head>
+<body>
+
+<!-- ==================== HEADER ==================== -->
+<header class="app-header" role="banner">
+  <div class="logo">BNK <span>경남은행</span></div>
+  <div class="divider"></div>
+  <div class="subtitle">AI 여신심사 어시스턴트</div>
+  <div class="spacer"></div>
+  <div class="user-info">영업점 RM &nbsp;|&nbsp; 창원중앙지점 &nbsp;|&nbsp; 김철수</div>
+</header>
+
+<!-- ==================== STEP BAR ==================== -->
+<nav class="step-bar" role="navigation" aria-label="심사 단계">
+  <div class="step-item done" onclick="gotoStep(1)" id="step-1">
+    <div class="step-num">&#10003;</div>서류 등록
+  </div>
+  <div class="step-arrow">›</div>
+  <div class="step-item active" onclick="gotoStep(2)" id="step-2">
+    <div class="step-num">2</div>AI 토론 분석
+  </div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" onclick="gotoStep(3)" id="step-3">
+    <div class="step-num">3</div>심사 항목 결과
+  </div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" onclick="gotoStep(4)" id="step-4">
+    <div class="step-num">4</div>종합의견 &amp; 제출
+  </div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" onclick="gotoStep(5)" id="step-5">
+    <div class="step-num">5</div>제출 완료
+  </div>
+</nav>
+
+<!-- ==================== MAIN ==================== -->
+<main class="main-content" role="main">
+
+  <!-- ======== SCREEN 1: 서류 등록 ======== -->
+  <section class="screen active" id="screen-1" aria-label="서류 등록">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div>
+        <h1 style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">서류 등록</h1>
+        <p class="text-muted text-sm">고객 사업자번호를 입력하면 담당 심사역이 자동 배정됩니다.</p>
+      </div>
+    </div>
+
+    <!-- 사업자번호 -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title"><span class="icon">&#128265;</span>기업 조회</div>
+      <div class="form-grid form-grid-3" style="margin-bottom:16px;">
+        <div class="form-group">
+          <label class="form-label">사업자등록번호<span class="required">*</span></label>
+          <input class="form-control" id="biz-num" type="text" placeholder="000-00-00000" maxlength="12"
+            oninput="formatBizNum(this)" onblur="lookupCompany()" aria-required="true" aria-describedby="biz-hint">
+          <span class="form-hint" id="biz-hint">10자리 숫자 자동 하이픈</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">상호명</label>
+          <input class="form-control" id="company-name" type="text" placeholder="조회 후 자동 입력" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">대표자명</label>
+          <input class="form-control" id="ceo-name" type="text" placeholder="조회 후 자동 입력" readonly>
+        </div>
+      </div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">업종</label>
+          <select class="form-control" id="industry" aria-label="업종 선택">
+            <option value="">-- 선택 --</option>
+            <option value="제조업" selected>제조업</option>
+            <option value="건설업">건설업</option>
+            <option value="도소매업">도소매업</option>
+            <option value="서비스업">서비스업</option>
+            <option value="IT·소프트웨어">IT·소프트웨어</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">설립연도</label>
+          <input class="form-control" id="found-year" type="text" placeholder="2010" value="2012">
+        </div>
+        <div class="form-group">
+          <label class="form-label">기업 구분</label>
+          <select class="form-control">
+            <option>중소기업</option>
+            <option>중견기업</option>
+            <option>대기업</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 심사역 배정 배너 -->
+    <div class="reviewer-banner" id="reviewer-banner" aria-live="polite">
+      <div class="rv-icon" aria-hidden="true">&#128100;</div>
+      <div>
+        <div class="rv-label">자동 배정된 담당 심사역</div>
+        <div class="rv-name">박민준 심사역</div>
+        <div class="rv-sub">여신심사1팀 &nbsp;·&nbsp; 제조업 전문 &nbsp;·&nbsp; 유사 사례 47건 보유</div>
+      </div>
+      <div class="rv-tag">&#10003; 배정 완료</div>
+    </div>
+
+    <div class="s1-layout">
+      <!-- 좌: 여신 요청 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128176;</span>여신 요청 정보</div>
+        <div class="form-grid form-grid-2" style="margin-bottom:16px;">
+          <div class="form-group">
+            <label class="form-label">대출 유형<span class="required">*</span></label>
+            <select class="form-control" aria-required="true">
+              <option>일반자금대출</option>
+              <option>운전자금대출</option>
+              <option>시설자금대출</option>
+              <option>기술금융대출</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">신청금액<span class="required">*</span></label>
+            <input class="form-control" type="text" id="loan-amount" value="1,500,000,000"
+              oninput="formatAmount(this)" aria-label="신청금액 원화">
+          </div>
+        </div>
+        <div class="form-grid form-grid-2" style="margin-bottom:16px;">
+          <div class="form-group">
+            <label class="form-label">대출 기간</label>
+            <select class="form-control">
+              <option>12개월</option>
+              <option>24개월</option>
+              <option selected>36개월</option>
+              <option>48개월</option>
+              <option>60개월</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">담보 유형</label>
+            <select class="form-control">
+              <option>부동산 담보</option>
+              <option>신용</option>
+              <option selected>혼합(부동산+신용)</option>
+              <option>동산 담보</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">자금 용도</label>
+          <input class="form-control" type="text" value="제조라인 증설 및 운전자금 확보">
+        </div>
+      </div>
+
+      <!-- 우: 서류 업로드 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128196;</span>서류 업로드</div>
+        <div class="upload-grid">
+          <div class="upload-zone" role="button" tabindex="0" aria-label="재무제표 업로드 영역"
+            onclick="simulateUpload(this, '재무제표_2022-2024.pdf')"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')">
+            <div class="upload-icon">&#128196;</div>
+            <div class="upload-title">재무제표</div>
+            <div class="upload-sub">최근 3개년 결산</div>
+            <div class="upload-tag">PDF / Excel</div>
+            <div class="file-list" id="fl-0"></div>
+          </div>
+          <div class="upload-zone" role="button" tabindex="0" aria-label="소득금액증명원 업로드 영역"
+            onclick="simulateUpload(this, '소득금액증명원_2024.pdf')"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')">
+            <div class="upload-icon">&#128203;</div>
+            <div class="upload-title">소득금액증명원</div>
+            <div class="upload-sub">최근 2개년</div>
+            <div class="upload-tag">PDF</div>
+            <div class="file-list" id="fl-1"></div>
+          </div>
+          <div class="upload-zone" role="button" tabindex="0" aria-label="부가세증명원 업로드 영역"
+            onclick="simulateUpload(this, '부가세과세표준증명_2024.pdf')"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')">
+            <div class="upload-icon">&#128203;</div>
+            <div class="upload-title">부가세증명원</div>
+            <div class="upload-sub">과세표준증명</div>
+            <div class="upload-tag">PDF</div>
+            <div class="file-list" id="fl-2"></div>
+          </div>
+          <div class="upload-zone" role="button" tabindex="0" aria-label="사업자등록증 업로드 영역"
+            onclick="simulateUpload(this, '사업자등록증.pdf')"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')">
+            <div class="upload-icon">&#128205;</div>
+            <div class="upload-title">사업자등록증</div>
+            <div class="upload-sub">원본 사본</div>
+            <div class="upload-tag">PDF / 이미지</div>
+            <div class="file-list" id="fl-3"></div>
+          </div>
+        </div>
+        <div class="mt-16" style="text-align:right;">
+          <button class="btn btn-primary btn-lg" onclick="startAnalysis()" aria-label="AI 분석 시작">
+            &#127302; AI 분석 시작
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== SCREEN 2: AI 토론 분석 ======== -->
+  <section class="screen" id="screen-2" aria-label="AI 토론 분석">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div>
+        <h1 style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">AI 토론 분석 진행 중</h1>
+        <p class="text-muted text-sm">7명의 AI 에이전트가 토론하여 9개 심사 항목을 작성합니다. 잠시 기다려 주세요.</p>
+      </div>
+      <div class="info-pill">&#128337; 예상 소요 시간: 약 30초</div>
+    </div>
+
+    <div class="discussion-layout">
+      <!-- 에이전트 목록 -->
+      <div class="flex-col" style="gap:12px;">
+        <div class="card" style="padding:14px 16px;margin-bottom:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-lt);text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px;">참여 에이전트</div>
+          <div class="agent-list" id="agent-list">
+            <div class="agent-card" id="ag-0" aria-label="의장 에이전트">
+              <div class="agent-avatar" style="background:#EEF4FF;">&#129332;</div>
+              <div>
+                <div class="agent-name">의장</div>
+                <div class="agent-role">Lead Agent</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-0">대기</div>
+            </div>
+            <div class="agent-card" id="ag-1" aria-label="수석 CPA 에이전트">
+              <div class="agent-avatar" style="background:#E8F5E9;">&#128200;</div>
+              <div>
+                <div class="agent-name">수석 CPA</div>
+                <div class="agent-role">Financial Analyst</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-1">대기</div>
+            </div>
+            <div class="agent-card" id="ag-2" aria-label="산업 애널리스트 에이전트">
+              <div class="agent-avatar" style="background:#FFF3E0;">&#127963;</div>
+              <div>
+                <div class="agent-name">산업 애널리스트</div>
+                <div class="agent-role">Industry Analyst</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-2">대기</div>
+            </div>
+            <div class="agent-card" id="ag-3" aria-label="평판 리스크 탐지관 에이전트">
+              <div class="agent-avatar" style="background:#FFEBEE;">&#128269;</div>
+              <div>
+                <div class="agent-name">평판 리스크 탐지관</div>
+                <div class="agent-role">Non-Financial Analyst</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-3">대기</div>
+            </div>
+            <div class="agent-card" id="ag-4" aria-label="본부 수석 심사역 에이전트">
+              <div class="agent-avatar" style="background:#E8F5E9;">&#129351;</div>
+              <div>
+                <div class="agent-name">본부 수석 심사역</div>
+                <div class="agent-role">Underwriter</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-4">대기</div>
+            </div>
+            <div class="agent-card" id="ag-5" aria-label="기업영업 RM 에이전트">
+              <div class="agent-avatar" style="background:#EEF4FF;">&#129333;</div>
+              <div>
+                <div class="agent-name">기업영업 RM</div>
+                <div class="agent-role">Relationship Manager</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-5">대기</div>
+            </div>
+            <div class="agent-card" id="ag-6" aria-label="여신심사 검증관 에이전트">
+              <div class="agent-avatar" style="background:#FFEBEE;">&#128270;</div>
+              <div>
+                <div class="agent-name">여신심사 검증관</div>
+                <div class="agent-role">Critic / Verifier</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-6">대기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 채팅 영역 -->
+      <div class="chat-area">
+        <div class="chat-header">
+          <div class="ch-title">AI 심사 토론</div>
+          <div class="round-badge" id="round-label">1 / 3 라운드</div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span id="progress-text">토론 준비 중...</span>
+            <span id="progress-pct">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="chat-messages" id="chat-messages" aria-live="polite" aria-atomic="false"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== SCREEN 3: 심사 항목 결과 ======== -->
+  <section class="screen" id="screen-3" aria-label="심사 항목 결과">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div>
+        <h1 style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">심사 항목 결과</h1>
+        <p class="text-muted text-sm">AI 생성 초안입니다. 각 항목을 검토하고 필요 시 직접 편집하세요.</p>
+      </div>
+      <div class="flex gap-8 items-center">
+        <div class="ai-draft-label" aria-label="AI 생성 초안 안내">&#129302; AI 생성 초안 — 검토 필요</div>
+        <button class="btn btn-secondary btn-sm" onclick="expandAll()">전체 펼치기</button>
+      </div>
+    </div>
+
+    <div class="review-layout">
+      <!-- 9개 항목 -->
+      <div class="items-list" id="items-list">
+        <!-- 동적 생성 -->
+      </div>
+
+      <!-- 사이드 패널 -->
+      <div class="side-panel">
+        <!-- 기업 요약 -->
+        <div class="summary-card">
+          <div class="summary-title">기업 개요</div>
+          <div class="summary-row">
+            <span class="summary-key">상호명</span>
+            <span class="summary-val">(주)창원정밀</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">대표자</span>
+            <span class="summary-val">이재현</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">업종</span>
+            <span class="summary-val">금속 부품 제조</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">설립</span>
+            <span class="summary-val">2012년 (업력 13년)</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">신청금액</span>
+            <span class="summary-val" style="color:var(--primary);">15억 원</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">담당 심사역</span>
+            <span class="summary-val">박민준</span>
+          </div>
+        </div>
+
+        <!-- 항목 요약 현황 -->
+        <div class="summary-card">
+          <div class="summary-title">등급 현황</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:center;">
+            <div style="padding:10px;background:var(--grade-h-bg);border-radius:6px;">
+              <div style="font-size:22px;font-weight:700;color:var(--approve);" id="grade-h-count">4</div>
+              <div style="font-size:11px;color:var(--approve);font-weight:600;">상</div>
+            </div>
+            <div style="padding:10px;background:var(--grade-m-bg);border-radius:6px;">
+              <div style="font-size:22px;font-weight:700;color:var(--warning);" id="grade-m-count">3</div>
+              <div style="font-size:11px;color:var(--warning);font-weight:600;">중</div>
+            </div>
+            <div style="padding:10px;background:var(--grade-l-bg);border-radius:6px;">
+              <div style="font-size:22px;font-weight:700;color:var(--danger);" id="grade-l-count">2</div>
+              <div style="font-size:11px;color:var(--danger);font-weight:600;">하</div>
+            </div>
+          </div>
+          <hr class="section-divider">
+          <div class="summary-title">데이터 현황</div>
+          <div class="summary-row">
+            <span class="summary-key">&#9989; 정상</span>
+            <span class="summary-val">5개 항목</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">&#9888;&#65039; 부족</span>
+            <span class="summary-val" style="color:var(--warning);">3개 항목</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">&#10060; 누락</span>
+            <span class="summary-val" style="color:var(--danger);">1개 항목</span>
+          </div>
+        </div>
+
+        <!-- 징구서류 안내 -->
+        <div class="summary-card">
+          <div class="summary-title">&#128196; 징구서류 안내</div>
+          <div class="doc-list">
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">재무제표 (3개년)</span>
+              <span class="doc-status doc-status-ok">제출완료</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">소득금액증명원</span>
+              <span class="doc-status doc-status-ok">제출완료</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">부가세증명원</span>
+              <span class="doc-status doc-status-ok">제출완료</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">사업자등록증</span>
+              <span class="doc-status doc-status-ok">제출완료</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">담보물 감정평가서</span>
+              <span class="doc-status doc-status-warn">보완 필요</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">최근 6개월 매출자료</span>
+              <span class="doc-status doc-status-err">미제출</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="gotoStep(1)">&#8592; 서류 재등록</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" onclick="saveTemp()">&#128190; 임시 저장</button>
+      <button class="btn btn-primary btn-lg" onclick="gotoStep(4)">종합의견 작성 &#8594;</button>
+    </div>
+  </section>
+
+  <!-- ======== SCREEN 4: 종합의견 & 제출 ======== -->
+  <section class="screen" id="screen-4" aria-label="종합의견 작성 및 제출">
+    <div class="submit-layout">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+        <div>
+          <h1 style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">종합의견 &amp; 제출</h1>
+          <p class="text-muted text-sm">9개 항목을 종합한 최종 심사의견을 작성하고 심사역에게 제출합니다.</p>
+        </div>
+      </div>
+
+      <!-- 종합의견 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128221;</span>종합의견</div>
+        <div class="ai-draft-label" aria-label="AI 생성 초안 안내">&#129302; AI 생성 초안 — 검토 필요</div>
+        <textarea class="comprehensive-textarea" id="comprehensive-opinion" aria-label="종합의견 입력"></textarea>
+        <div style="display:flex; justify-content:flex-end; margin-top:10px; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="regenerateOpinion()">&#128260; 종합의견 재생성</button>
+        </div>
+      </div>
+
+      <!-- 심사 결론 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">&#9989;</span>심사 결론</div>
+        <div style="display:flex; gap:16px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:14px 20px;border:2px solid var(--border);border-radius:8px;flex:1;transition:all .15s;"
+            id="radio-approve-label">
+            <input type="radio" name="conclusion" value="approve" id="radio-approve"
+              onchange="selectConclusion('approve')" aria-label="승인 권고">
+            <span style="font-size:18px;">&#9989;</span>
+            <span style="font-weight:600;color:var(--approve);">승인 권고</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:14px 20px;border:2px solid var(--border);border-radius:8px;flex:1;transition:all .15s;"
+            id="radio-cond-label">
+            <input type="radio" name="conclusion" value="conditional" id="radio-cond"
+              onchange="selectConclusion('conditional')" aria-label="조건부 승인">
+            <span style="font-size:18px;">&#9888;&#65039;</span>
+            <span style="font-weight:600;color:var(--warning);">조건부 승인</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:14px 20px;border:2px solid var(--border);border-radius:8px;flex:1;transition:all .15s;"
+            id="radio-reject-label">
+            <input type="radio" name="conclusion" value="reject" id="radio-reject"
+              onchange="selectConclusion('reject')" aria-label="부결 권고">
+            <span style="font-size:18px;">&#10060;</span>
+            <span style="font-weight:600;color:var(--danger);">부결 권고</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 승인 조건 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128205;</span>승인 조건 (조건부 시 필수)</div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label">조건 내용</label>
+          <textarea class="form-control" style="height:80px;resize:none;padding:10px 12px;font-family:inherit;line-height:1.6;" aria-label="승인 조건 입력">1. 감정평가서 제출 (심사 승인 후 1개월 이내)
+2. 최근 6개월 매출자료 제출 (2025년 1~6월)
+3. 담보 설정 비율 대출금액의 130% 이상 유지</textarea>
+        </div>
+      </div>
+
+      <!-- 하단 액션 -->
+      <div class="action-bar" style="border-radius:0 0 8px 8px;">
+        <button class="btn btn-secondary" onclick="gotoStep(3)">&#8592; 항목 수정</button>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" onclick="saveTemp()">&#128190; 임시 저장</button>
+        <button class="btn btn-secondary" onclick="openPreviewModal()">&#128464; 심사요청서 미리보기</button>
+        <button class="btn btn-danger btn-lg" onclick="openSubmitConfirm()">&#128228; 심사역 제출</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== SCREEN 5: 제출 완료 ======== -->
+  <section class="screen" id="screen-5" aria-label="제출 완료">
+    <div class="success-screen">
+      <div class="success-icon" aria-hidden="true">&#9989;</div>
+      <h1 class="success-title">심사 요청이 제출되었습니다</h1>
+      <p class="success-body">
+        심사역 박민준님께 여신심사 요청이 전달되었습니다.<br>
+        등급·데이터 라벨은 제거된 심사의견서 초안이 심사역에게 전달됩니다.<br>
+        처리 현황은 여신심사 포털에서 확인하실 수 있습니다.
+      </p>
+      <div class="success-ticket" role="region" aria-label="제출 접수증">
+        <div class="ticket-row">
+          <span class="ticket-key">접수번호</span>
+          <span class="ticket-val" style="color:var(--primary);">REQ-2026-06190047</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">기업명</span>
+          <span class="ticket-val">(주)창원정밀</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">신청금액</span>
+          <span class="ticket-val">15억 원</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">담당 심사역</span>
+          <span class="ticket-val">박민준</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">제출 일시</span>
+          <span class="ticket-val">2026-06-19 14:37</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">심사 결론</span>
+          <span class="ticket-val" style="color:var(--warning);">조건부 승인 권고</span>
+        </div>
+      </div>
+      <div style="margin-top:28px;">
+        <button class="btn btn-primary" onclick="gotoStep(1); location.reload()">&#43; 새 심사 등록</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- 심사요청서 미리보기 -->
+<div class="modal-overlay" id="preview-modal" role="dialog" aria-modal="true" aria-label="심사요청서 미리보기">
+  <div class="modal" style="max-width:860px;">
+    <div class="modal-header">
+      <div class="modal-title">&#128464; 심사요청서 미리보기</div>
+      <button class="modal-close" onclick="closeModal('preview-modal')" aria-label="닫기">&#10005;</button>
+    </div>
+    <div class="modal-body" id="preview-body">
+      <!-- 동적 생성 -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('preview-modal')">닫기</button>
+      <button class="btn btn-primary">&#128196; PDF 출력</button>
+    </div>
+  </div>
+</div>
+
+<!-- 제출 확인 다이얼로그 -->
+<div class="modal-overlay" id="submit-confirm" role="dialog" aria-modal="true" aria-label="제출 확인">
+  <div class="modal confirm-modal">
+    <div class="modal-header">
+      <div class="modal-title">최종 제출 확인</div>
+      <button class="modal-close" onclick="closeModal('submit-confirm')" aria-label="닫기">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon" aria-hidden="true">&#128228;</div>
+      <div class="confirm-title">심사역에게 제출하시겠습니까?</div>
+      <div class="confirm-body">
+        박민준 심사역에게 (주)창원정밀의<br>
+        여신심사 요청서를 제출합니다.
+      </div>
+      <div class="confirm-notice">
+        &#9888;&#65039; 제출 후에는 수정이 불가합니다.<br>
+        등급(상/중/하) 및 데이터 라벨은 제거된 상태로 전달됩니다.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('submit-confirm')">취소</button>
+      <button class="btn btn-danger" onclick="doSubmit()">&#128228; 최종 제출</button>
+    </div>
+  </div>
+</div>
+
+<!-- 보강 로딩 -->
+<div class="reinforce-overlay" id="reinforce-overlay" role="status" aria-live="polite" aria-label="데이터 보강 중">
+  <div class="reinforce-box">
+    <div class="reinforce-spinner"></div>
+    <div class="reinforce-title" id="reinforce-title">데이터 보강 중...</div>
+    <div class="reinforce-sub">외부 데이터 추적관이 자료를 검색합니다</div>
+    <div class="reinforce-steps">
+      <div class="reinforce-step active" id="rs-1">&#128269; 외부 기업정보 검색 중</div>
+      <div class="reinforce-step" id="rs-2">&#128196; RAG 유사 사례 조회 중</div>
+      <div class="reinforce-step" id="rs-3">&#128221; 보강 워딩 생성 중</div>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast" role="alert">
+  <span class="toast-icon" id="toast-icon">&#10003;</span>
+  <span id="toast-msg">저장되었습니다.</span>
+</div>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const ITEMS_DATA = [
+  {
+    id: 1, name: "업체현황", grade: "상", data: "정상",
+    opinion: "(주)창원정밀은 2012년 설립된 금속 부품 제조 전문 기업으로, 자동차 부품 OEM 공급을 주력으로 합니다. 최근 3개년(2022~2024) 매출액은 각각 82억, 96억, 118억 원으로 연평균 19.8% 성장세를 보이며, 영업이익률은 7.2%로 업종 평균(5.3%) 대비 우위를 나타냅니다. 주요 거래처는 현대모비스, KG모빌리티 등 대형 완성차 메이커로 안정적인 매출 기반을 확보하고 있습니다. 부채비율 142%는 동종업종 평균(167%) 대비 양호한 수준입니다.",
+    hint: "영업이익률 7.2%는 업종 평균 5.3% 대비 우위입니다. 구체적인 수치 근거를 추가하면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "재무제표_2024.pdf", quote: "당기 매출액 118억 2,340만 원 (전년 대비 22.9% 증가)", loc: "p.3 손익계산서" },
+      { doc: "사업자등록증.pdf", quote: "업종: 자동차 부품 제조업 / 설립: 2012.03.15", loc: "p.1" },
+      { doc: "과거심사사례_RAG", quote: "유사 업종 승인 사례: 부채비율 140~160% 범위에서 승인율 78%", loc: "심사DB" }
+    ]
+  },
+  {
+    id: 2, name: "자금용도", grade: "상", data: "정상",
+    opinion: "신청 자금 15억 원은 제2공장 CNC 가공 라인 증설(10억) 및 원자재 구매 운전자금(5억)으로 구성됩니다. 수주 잔고 32억 원(2025년 확정 수주) 대비 시설 투자 필요성이 명확하며, 현대모비스 2차 벤더 선정에 따른 생산량 증대 계획과 부합합니다. 자금 집행 계획서상 3개월 이내 장비 납품 및 가동 예정으로 자금 회수 경로가 구체적입니다.",
+    hint: "수주 잔고 32억을 뒷받침하는 계약서 사본이 있으면 심사역 설득에 유리합니다.",
+    evidence: [
+      { doc: "자금계획서.pdf", quote: "CNC 머시닝센터 2대 도입: 단가 4.5억/대, 납기 2025년 8월", loc: "p.2" },
+      { doc: "수주확인서_현대모비스.pdf", quote: "2025년 공급 계약금액 32억 4,000만 원 확정", loc: "p.1" }
+    ]
+  },
+  {
+    id: 3, name: "금리결정 적정성", grade: "중", data: "정상",
+    opinion: "제안 금리 5.2%(변동, 3M KORIBOR +2.1%)는 차주의 신용등급 BB+(NICE 기준) 및 담보(LTV 72%) 조건을 반영한 수준입니다. 동종 업종 유사 규모 최근 6개월 승인 사례(평균 5.0~5.6%) 범위 내에 위치하나, DSCR 1.18배로 기준 1.25 미달 상태입니다. 금리 인상 시 상환 부담이 가중될 수 있어 변동금리 선택 리스크에 대한 추가 검토가 필요합니다.",
+    hint: "DSCR 1.18은 기준 1.25 미달입니다. 금리 하향 또는 거치기간 부여를 검토해 보세요.",
+    evidence: [
+      { doc: "신용평가서_NICE.pdf", quote: "기업 신용등급 BB+, 평가일 2025.04.30", loc: "p.1" },
+      { doc: "재무제표_2024.pdf", quote: "이자보상배율 2.3배, 영업현금흐름 8.7억", loc: "p.5" }
+    ]
+  },
+  {
+    id: 4, name: "상환재원", grade: "하", data: "부족",
+    opinion: "연간 영업현금흐름(2024년 기준) 8.7억 원 대비 연간 원리금 상환액 추정치 6.8억 원으로 DSCR 1.18배가 산출됩니다. 이는 당행 여신심사 기준 최소 DSCR 1.25배에 미달하여 상환재원의 적정성이 부족합니다. 단, 현대모비스 추가 수주에 따른 2025년 매출 증가(예상 145억) 반영 시 DSCR 1.31배로 개선 가능합니다. 최근 6개월 매출자료 미제출로 추정에 의존하는 한계가 있습니다.",
+    hint: "DSCR 미달은 심사역 반려 1순위입니다. 2025년 수주 증가분을 근거로 재산출하거나, 대출기간 연장을 검토하세요.",
+    evidence: [
+      { doc: "재무제표_2024.pdf", quote: "영업활동현금흐름 8억 7,240만 원", loc: "p.7 현금흐름표" }
+    ]
+  },
+  {
+    id: 5, name: "특이사항", grade: "상", data: "정상",
+    opinion: "경영진(대표 이재현) 금융 연체 이력 없음. 최근 5년간 소송·체납 내역 미확인. 법인세 정상 납부 확인(국세청 납세증명서). 2024년 6월 고용노동부 안전관리 우수기업 인증 획득. 주요 매체 부정 보도 없음. 동종업종 ESG 규제(탄소중립 로드맵) 대응 현황은 기술금융 항목에서 별도 검토함.",
+    hint: null,
+    evidence: [
+      { doc: "납세증명서_2025.pdf", quote: "체납국세 없음 확인, 발급일 2025.05.02", loc: "p.1" },
+      { doc: "법원등기부등본.pdf", quote: "소송 기재사항 없음", loc: "p.3" }
+    ]
+  },
+  {
+    id: 6, name: "기술금융 & ESG", grade: "중", data: "부족",
+    opinion: "자체 CNC 자동화 설비 보유 및 ISO 9001 품질 인증(2023년 갱신)을 통해 기술력은 확인됩니다. 기업부설 연구소 미보유로 기술금융 T등급 산정의 기술력 가점 적용이 제한됩니다. ESG 측면에서 에너지 절감 설비 투자(태양광 패널 350kW)가 예정되어 있으나 실행 계획서만 제출되어 확정이 아닙니다. TCF(기술신용평가) 추가 의뢰를 통해 기술등급 상향 가능성을 검토할 것을 권고합니다.",
+    hint: "TCF 기관 추가 의뢰 시 T3 이상 등급 획득 가능성 있습니다. 기술금융 금리 우대(-0.3%p) 적용 검토를 권고합니다.",
+    evidence: [
+      { doc: "기술신용평가_결과.pdf", quote: "T4등급, 평가일 2025.03.15, TCB 한국기업데이터", loc: "p.2" }
+    ]
+  },
+  {
+    id: 7, name: "종합의견", grade: "중", data: "정상",
+    opinion: "업체현황 및 자금용도는 양호하나 DSCR 기준 미달(1.18배, 기준 1.25배)이 핵심 리스크입니다. 최근 6개월 매출자료 미제출로 현재 상환능력의 정확한 검증에 한계가 있습니다. 조건부 승인(최근 매출자료 제출, 감정평가서 보완, DSCR 재산출 후 기준 충족 확인)을 전제로 여신 실행이 가능한 것으로 판단됩니다. 거래 이력 및 담보 안전성(LTV 72%)을 감안하면 전반적 리스크는 관리 가능 수준입니다.",
+    hint: null,
+    evidence: [
+      { doc: "과거심사사례_RAG", quote: "박민준 심사역 유사 승인 사례 12건 중 DSCR 1.15~1.25 범위 조건부 승인 8건", loc: "심사DB" }
+    ]
+  },
+  {
+    id: 8, name: "미이행 승인조건", grade: "중", data: "누락",
+    opinion: "과거 여신 관계가 신규 거래로 미이행 승인조건 이력이 없습니다. 단, 이번 심사에서 도출된 조건 이행 계획이 명확히 설정되어야 합니다. [데이터 누락: 기존 당행 여신 거래 내역이 없어 이행 조건 이력 검증 불가. 타행 이행 이력 확인을 위한 신용정보원 조회 결과를 징구할 것을 권고합니다.]",
+    hint: "신규 고객으로 이행 이력 없음은 리스크 요소입니다. 신용정보원 거래 이력 조회 결과를 추가 징구하세요.",
+    evidence: [
+      { doc: "신용조회서_신용정보원.pdf", quote: "조회 결과 미제출 — 데이터 누락", loc: "미제출" }
+    ]
+  },
+  {
+    id: 9, name: "영업점장 특별의견", grade: "상", data: "정상",
+    opinion: "이재현 대표는 창원 지역 제조업 협회 부회장을 역임하는 등 지역 네트워크가 탄탄하며, 거래 개시 후 3개월간 정기 방문으로 사업 실태를 직접 확인하였습니다. 수주 현황 및 공장 가동률(82%)이 서류와 일치함을 현장에서 확인하였고, 대표의 사업 의지와 경영 역량이 우수합니다. 현장 방문 시 최신 설비 도입 계획이 구체적으로 진행 중임을 확인하였으며, 지점장 책임하에 적극 지원을 권고합니다.",
+    hint: null,
+    evidence: [
+      { doc: "현장방문 보고서.pdf", quote: "방문일 2025.06.10, 공장 가동률 82% 육안 확인", loc: "p.1" }
+    ]
+  }
+];
+
+const AGENTS = [
+  { name: "의장", role: "Lead Agent", emoji: "⚖️", color: "#EEF4FF" },
+  { name: "수석 CPA", role: "Financial Analyst", emoji: "📊", color: "#E8F5E9" },
+  { name: "산업 애널리스트", role: "Industry Analyst", emoji: "🏗️", color: "#FFF3E0" },
+  { name: "평판 리스크 탐지관", role: "Non-Financial Analyst", emoji: "🔍", color: "#FFEBEE" },
+  { name: "본부 수석 심사역", role: "Underwriter", emoji: "🥇", color: "#E8F5E9" },
+  { name: "기업영업 RM", role: "RM", emoji: "🤝", color: "#EEF4FF" },
+  { name: "여신심사 검증관", role: "Critic", emoji: "🔎", color: "#FFEBEE" }
+];
+
+const DISCUSSION_MESSAGES = [
+  { agentIdx: 0, cls: "chairman", text: "안녕하십니까. (주)창원정밀의 여신심사를 시작합니다. 서류 일체와 RAG 컨텍스트를 배포하였습니다. 각 에이전트는 담당 항목 분석을 시작해 주십시오." },
+  { agentIdx: 1, cls: "", text: "재무제표 분석 결과를 보고합니다. 최근 3개년 매출 CAGR 19.8%, 영업이익률 7.2%로 양호합니다. 다만 DSCR이 1.18배로 기준치 1.25배에 미달합니다. 상환재원 항목을 '하' 등급으로 제안합니다." },
+  { agentIdx: 2, cls: "", text: "자동차 부품 제조업종은 현재 전기차 전환 과도기 리스크가 있으나, OEM 2차 벤더 확정 수주는 업종 전환 리스크를 일정 부분 상쇄합니다. 자금용도 타당성은 '상' 등급으로 제안합니다." },
+  { agentIdx: 3, cls: "", text: "경영진 이력 및 법적 이슈를 점검하였습니다. 연체·소송·체납 없음 확인. 단, 신용정보원 타행 이력 자료가 미제출 상태입니다. 미이행 승인조건 항목에 '데이터 누락' 라벨을 부여합니다." },
+  { agentIdx: 4, cls: "", text: "규정 검토 결과 DSCR 기준 미달이 핵심 쟁점입니다. 조건부 승인 조건으로 최근 6개월 매출자료 추가 제출 및 DSCR 재산출을 의무화할 것을 제안합니다." },
+  { agentIdx: 6, cls: "critic", text: "⚠️ 이의 있습니다. 수석 CPA의 DSCR 산출 근거에서 2025년 예상 수주를 반영하였으나, 확정 계약서 없이 추정치를 기입한 것은 규정 위반입니다. 해당 항목 재조사를 요청합니다." },
+  { agentIdx: 1, cls: "", text: "재조사 결과 보고합니다. 현대모비스 수주확인서(32.4억) 확인으로 2025년 매출 예상치는 계약 기반 수치로 수정합니다. DSCR 현재 1.18 / 수주 반영 시 1.31로 개선됩니다. 조건부 승인 조건 부여 시 리스크 관리 가능 수준입니다." },
+  { agentIdx: 5, cls: "", text: "현장 방문 결과를 추가합니다. 공장 가동률 82%, 대표 사업 의지 우수, 수주 서류 현장 확인 완료. 지점장 책임하 지원을 권고드립니다." },
+  { agentIdx: 0, cls: "chairman", text: "검증관의 지적 사항이 해소되었습니다. 1라운드 토론을 종료하고 9개 항목 초안을 합성합니다. 최종 권고: 조건부 승인 (DSCR 재산출, 매출자료·감정평가서 보완)." }
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let currentStep = 1;
+let discussionStarted = false;
+let discussionComplete = false;
+
+// ── NAVIGATION ──────────────────────────────────────────────────────────────
+function gotoStep(n) {
+  if (n > 2 && !discussionComplete) {
+    if (n === 1) { _gotoStep(1); return; }
+    showToast("AI 분석이 완료된 후 이동 가능합니다.", "⚠️");
+    return;
+  }
+  _gotoStep(n);
+}
+
+function _gotoStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + n).classList.add('active');
+
+  document.querySelectorAll('.step-item').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    const idx = i + 1; // each step-item maps to step idx (skip arrows)
+  });
+
+  // step items: indices 0,1,2,3,4 = steps 1-5 (arrows are separate elements)
+  const stepItems = document.querySelectorAll('.step-item');
+  stepItems.forEach((el, i) => {
+    const stepNum = i + 1;
+    if (stepNum < n) el.classList.add('done');
+    else if (stepNum === n) el.classList.add('active');
+  });
+}
+
+// ── SCREEN 1 ──────────────────────────────────────────────────────────────────
+function formatBizNum(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 10);
+  if (v.length > 5) v = v.slice(0,3) + '-' + v.slice(3,5) + '-' + v.slice(5);
+  else if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
+  el.value = v;
+}
+
+function lookupCompany() {
+  const v = document.getElementById('biz-num').value;
+  if (v.replace(/\D/g,'').length >= 10) {
+    document.getElementById('company-name').value = '(주)창원정밀';
+    document.getElementById('ceo-name').value = '이재현';
+    document.getElementById('found-year').value = '2012';
+    document.getElementById('industry').value = '제조업';
+    showToast("사업자 정보 조회 완료", "✓");
+  }
+}
+
+function formatAmount(el) {
+  let raw = el.value.replace(/[^\d]/g, '');
+  if (!raw) { el.value = ''; return; }
+  el.value = parseInt(raw, 10).toLocaleString('ko-KR');
+}
+
+let uploadedCount = 0;
+function simulateUpload(zone, filename) {
+  const fl = zone.querySelector('.file-list');
+  if (fl.innerHTML) return; // already uploaded
+  zone.style.borderColor = 'var(--approve)';
+  zone.style.background = '#F1F8F1';
+  const ext = filename.split('.').pop().toUpperCase();
+  const size = (Math.random() * 3 + 0.5).toFixed(1) + ' MB';
+  fl.innerHTML = `<div class="file-item"><span class="file-icon">📄</span><span class="file-name">${filename}</span><span class="file-size">${size}</span><span class="file-ok">✓</span></div>`;
+  uploadedCount++;
+}
+
+function startAnalysis() {
+  if (uploadedCount < 1) {
+    showToast("서류를 하나 이상 업로드해 주세요.", "⚠️");
+    return;
+  }
+  _gotoStep(2);
+  if (!discussionStarted) {
+    discussionStarted = true;
+    runDiscussion();
+  }
+}
+
+// ── SCREEN 2: DISCUSSION ANIMATION ──────────────────────────────────────────
+function runDiscussion() {
+  const chatEl = document.getElementById('chat-messages');
+  const fillEl = document.getElementById('progress-fill');
+  const pctEl = document.getElementById('progress-pct');
+  const txtEl = document.getElementById('progress-text');
+  const total = DISCUSSION_MESSAGES.length;
+  let idx = 0;
+
+  const phases = [
+    "문서 파싱 중...", "RAG 컨텍스트 로딩...", "토론 개회...",
+    "독립 분석 중...", "교차 평가 중...", "검증관 반박...",
+    "재조사 중...", "현장 의견 수집...", "9개 항목 합성 중..."
+  ];
+
+  function setAgentStatus(agentIdx, status) {
+    const card = document.getElementById('ag-' + agentIdx);
+    const statusEl = document.getElementById('ag-status-' + agentIdx);
+    if (!card || !statusEl) return;
+    card.classList.remove('speaking', 'done');
+    statusEl.classList.remove('status-speaking', 'status-done', 'status-wait');
+    if (status === 'speaking') {
+      card.classList.add('speaking');
+      statusEl.classList.add('status-speaking');
+      statusEl.textContent = '발언 중';
+    } else if (status === 'done') {
+      card.classList.add('done');
+      statusEl.classList.add('status-done');
+      statusEl.textContent = '완료';
+    } else {
+      statusEl.classList.add('status-wait');
+      statusEl.textContent = '대기';
+    }
+  }
+
+  function addTyping(agentIdx) {
+    const ag = AGENTS[agentIdx];
+    const wrap = document.createElement('div');
+    wrap.className = 'bubble-wrap';
+    wrap.id = 'typing-' + agentIdx;
+    wrap.innerHTML = `
+      <div class="bubble-avatar" style="background:${ag.color};">${ag.emoji}</div>
+      <div class="bubble-body">
+        <div class="bubble-meta">${ag.name} <span>${ag.role}</span></div>
+        <div class="bubble"><div class="bubble-typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+      </div>`;
+    chatEl.appendChild(wrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return wrap;
+  }
+
+  function replaceTypingWithBubble(typingEl, msg) {
+    const ag = AGENTS[msg.agentIdx];
+    typingEl.innerHTML = `
+      <div class="bubble-avatar" style="background:${ag.color};">${ag.emoji}</div>
+      <div class="bubble-body">
+        <div class="bubble-meta">${ag.name} <span style="color:var(--text-lt);">${ag.role}</span></div>
+        <div class="bubble ${msg.cls}">${msg.text}</div>
+      </div>`;
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function nextMsg() {
+    if (idx >= total) {
+      fillEl.style.width = '100%';
+      pctEl.textContent = '100%';
+      txtEl.textContent = '토론 완료 — 9개 항목 초안 생성됨';
+      document.getElementById('round-label').textContent = '완료';
+      // mark all done
+      AGENTS.forEach((_, i) => setAgentStatus(i, 'done'));
+      discussionComplete = true;
+      buildItemsHTML();
+      buildComprehensiveOpinion();
+      setTimeout(() => _gotoStep(3), 1200);
+      return;
+    }
+    const msg = DISCUSSION_MESSAGES[idx];
+    const pct = Math.round(((idx + 1) / total) * 100);
+    fillEl.style.width = pct + '%';
+    pctEl.textContent = pct + '%';
+    txtEl.textContent = phases[idx] || '분석 중...';
+    if (idx >= 6) document.getElementById('round-label').textContent = '2 / 3 라운드';
+
+    // set others to wait, current to speaking
+    setAgentStatus(msg.agentIdx, 'speaking');
+
+    const typingEl = addTyping(msg.agentIdx);
+    const delay = 600 + Math.random() * 800;
+    setTimeout(() => {
+      replaceTypingWithBubble(typingEl, msg);
+      setAgentStatus(msg.agentIdx, 'done');
+      idx++;
+      setTimeout(nextMsg, 300);
+    }, delay);
+  }
+
+  setTimeout(nextMsg, 500);
+}
+
+// ── SCREEN 3: ITEMS ──────────────────────────────────────────────────────────
+function buildItemsHTML() {
+  const container = document.getElementById('items-list');
+  container.innerHTML = '';
+  ITEMS_DATA.forEach((item, i) => {
+    const gradeClass = item.grade === '상' ? 'badge-h' : item.grade === '중' ? 'badge-m' : 'badge-l';
+    const dataClass = item.data === '정상' ? 'badge-ok' : item.data === '부족' ? 'badge-lack' : 'badge-miss';
+    const canReinforceGrade = item.grade !== '상';
+    const canReinforceData = item.data !== '정상';
+
+    const gradeEl = canReinforceGrade
+      ? `<div class="badge-reinforce-wrap">
+           <div class="badge ${gradeClass}" aria-label="${item.grade} 등급">등급 ${item.grade}</div>
+           <button class="reinforce-btn risk" onclick="event.stopPropagation();triggerReinforce('risk','${item.name}')" aria-label="위험 상태 보강">⚡ 위험 보강</button>
+         </div>`
+      : `<div class="badge ${gradeClass}" aria-label="${item.grade} 등급">등급 ${item.grade}</div>`;
+
+    const dataEl = canReinforceData
+      ? `<div class="badge-reinforce-wrap">
+           <div class="badge ${dataClass}" aria-label="데이터 ${item.data}">데이터 ${item.data}</div>
+           <button class="reinforce-btn data" onclick="event.stopPropagation();triggerReinforce('data','${item.name}')" aria-label="데이터 보강">📥 데이터 보강</button>
+         </div>`
+      : `<div class="badge ${dataClass}" aria-label="데이터 ${item.data}">데이터 ${item.data}</div>`;
+
+    const evidenceHtml = item.evidence.map(ev =>
+      `<div class="evidence-chip" tabindex="0" role="button" aria-label="${ev.doc} 인용 보기">
+         📎 ${ev.doc}
+         <div class="chip-tooltip"><strong>${ev.doc}</strong><br>${ev.quote}<br><span style="color:#90A4AE">${ev.loc}</span></div>
+       </div>`
+    ).join('');
+
+    const hintHtml = item.hint
+      ? `<div class="ai-hint" id="hint-${item.id}"><span class="ai-icon">🤖</span><span>${item.hint}</span></div>`
+      : '';
+
+    const el = document.createElement('div');
+    el.className = 'item-card' + (i === 0 ? ' open' : '');
+    el.id = 'item-' + item.id;
+    el.innerHTML = `
+      <div class="item-header" onclick="toggleItem(${item.id})" role="button" tabindex="0"
+           aria-expanded="${i === 0}" aria-controls="item-body-${item.id}">
+        <div class="item-num" aria-hidden="true">${item.id}</div>
+        <div class="item-name">${item.name}</div>
+        <div class="badge-row">
+          ${gradeEl}
+          ${dataEl}
+        </div>
+        <div class="item-chevron" aria-hidden="true">▼</div>
+      </div>
+      <div class="item-body" id="item-body-${item.id}">
+        <textarea class="opinion-textarea" id="ta-${item.id}"
+          aria-label="${item.name} 심사의견 입력"
+          oninput="showHint(${item.id})">${item.opinion}</textarea>
+        ${hintHtml}
+        <div class="evidence-section">
+          <div class="evidence-label">근거 문서</div>
+          <div class="evidence-chips">${evidenceHtml}</div>
+        </div>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+function toggleItem(id) {
+  const card = document.getElementById('item-' + id);
+  card.classList.toggle('open');
+  const header = card.querySelector('.item-header');
+  header.setAttribute('aria-expanded', card.classList.contains('open'));
+}
+
+function expandAll() {
+  document.querySelectorAll('.item-card').forEach(c => c.classList.add('open'));
+}
+
+function showHint(id) {
+  const hint = document.getElementById('hint-' + id);
+  if (hint) hint.classList.add('show');
+}
+
+function triggerReinforce(type, itemName) {
+  const overlay = document.getElementById('reinforce-overlay');
+  const title = document.getElementById('reinforce-title');
+  const rs1 = document.getElementById('rs-1');
+  const rs2 = document.getElementById('rs-2');
+  const rs3 = document.getElementById('rs-3');
+
+  title.textContent = type === 'data' ? '데이터 보강 중...' : '위험 상태 보강 중...';
+  rs1.className = 'reinforce-step active';
+  rs2.className = 'reinforce-step';
+  rs3.className = 'reinforce-step';
+  overlay.classList.add('show');
+
+  setTimeout(() => {
+    rs1.className = 'reinforce-step done';
+    rs1.textContent = '✓ 외부 기업정보 검색 완료';
+    rs2.className = 'reinforce-step active';
+  }, 1200);
+  setTimeout(() => {
+    rs2.className = 'reinforce-step done';
+    rs2.textContent = '✓ RAG 유사 사례 조회 완료';
+    rs3.className = 'reinforce-step active';
+  }, 2400);
+  setTimeout(() => {
+    rs3.className = 'reinforce-step done';
+    rs3.textContent = '✓ 보강 워딩 생성 완료';
+  }, 3600);
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    showToast(`"${itemName}" 항목 보강이 완료되었습니다. 초안을 확인하세요.`, "✓");
+  }, 4000);
+}
+
+// ── SCREEN 4 ──────────────────────────────────────────────────────────────────
+function buildComprehensiveOpinion() {
+  const ta = document.getElementById('comprehensive-opinion');
+  if (!ta) return;
+  ta.value = `(주)창원정밀에 대한 여신심사 결과를 종합적으로 보고드립니다.
+
+[기업 개요]
+동사는 2012년 설립된 금속 부품 제조 전문 기업으로 자동차 OEM 2차 벤더로서 안정적 매출 기반을 보유하고 있습니다.
+
+[재무 분석]
+최근 3개년 매출 CAGR 19.8%, 영업이익률 7.2%로 성장성과 수익성 모두 업종 평균을 상회합니다. 다만 DSCR 1.18배는 기준치 1.25배에 미달하여 상환재원의 적정성이 일부 부족합니다. 현대모비스 추가 수주(32.4억) 반영 시 DSCR 1.31배로 기준을 충족합니다.
+
+[리스크 및 보완 사항]
+1. 최근 6개월 매출자료 미제출로 현재 수익력 검증 필요
+2. 감정평가서 미제출 (담보 LTV 72% 추정치 기준)
+3. 기술신용등급 T4 — TCF 추가 의뢰 시 개선 가능성 있음
+
+[종합 결론]
+신청 자금의 용도 타당성, 업체 성장성, 담보 안전성(추정 LTV 72%)을 종합 감안 시 아래 조건부 승인이 적정한 것으로 지원합니다.
+- 조건 1: 최근 6개월 매출자료 제출 후 DSCR 재산출
+- 조건 2: 감정평가서 제출 (승인 후 1개월 이내)
+- 조건 3: 담보설정 대출액의 130% 이상 유지`;
+}
+
+function regenerateOpinion() {
+  showToast("종합의견을 재생성합니다...", "🔄");
+  setTimeout(buildComprehensiveOpinion, 800);
+}
+
+function selectConclusion(val) {
+  ['approve', 'cond', 'reject'].forEach(v => {
+    const el = document.getElementById('radio-' + v + '-label');
+    if (el) el.style.borderColor = 'var(--border)';
+  });
+  const map = { approve: 'approve', conditional: 'cond', reject: 'reject' };
+  const el = document.getElementById('radio-' + map[val] + '-label');
+  if (el) {
+    const colorMap = { approve: 'var(--approve)', conditional: 'var(--warning)', reject: 'var(--danger)' };
+    el.style.borderColor = colorMap[val];
+  }
+}
+
+function saveTemp() {
+  showToast("임시 저장되었습니다.", "💾");
+}
+
+// ── MODALS ───────────────────────────────────────────────────────────────────
+function openPreviewModal() {
+  buildPreview();
+  document.getElementById('preview-modal').classList.add('show');
+}
+
+function buildPreview() {
+  const body = document.getElementById('preview-body');
+  const itemsHtml = ITEMS_DATA.map(item => {
+    const gradeClass = item.grade === '상' ? 'badge-h' : item.grade === '중' ? 'badge-m' : 'badge-l';
+    return `
+      <div class="preview-item">
+        <div class="preview-item-header">
+          <span>${item.id}. ${item.name}</span>
+          <span class="badge ${gradeClass}" style="margin-left:auto;">등급 ${item.grade}</span>
+        </div>
+        <div class="preview-item-body">${(document.getElementById('ta-' + item.id) || {value: item.opinion}).value || item.opinion}</div>
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="preview-header">
+      <div class="preview-bank">BNK경남은행 여신심사부</div>
+      <div class="preview-title">여신심사 요청서 (초안)</div>
+      <div class="preview-meta">접수번호: REQ-2026-06190047 &nbsp;|&nbsp; 작성일: 2026-06-19 &nbsp;|&nbsp; 담당 심사역: 박민준</div>
+    </div>
+    <div class="preview-info-grid">
+      <div class="preview-info-cell"><span class="pik">기업명</span>(주)창원정밀</div>
+      <div class="preview-info-cell"><span class="pik">대표자</span>이재현</div>
+      <div class="preview-info-cell"><span class="pik">신청금액</span>15억 원</div>
+      <div class="preview-info-cell"><span class="pik">기간</span>36개월</div>
+      <div class="preview-info-cell"><span class="pik">대출유형</span>시설자금대출</div>
+      <div class="preview-info-cell"><span class="pik">담보유형</span>혼합(부동산+신용)</div>
+    </div>
+    <div class="preview-section-title">심사 항목별 의견</div>
+    ${itemsHtml}
+    <div class="preview-section-title">종합의견</div>
+    <div class="preview-item">
+      <div class="preview-item-body" style="white-space:pre-wrap;">${document.getElementById('comprehensive-opinion') ? document.getElementById('comprehensive-opinion').value : ''}</div>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;font-size:11px;color:#795548;">
+      ⚠️ 본 문서는 AI가 생성한 초안입니다. 최종 심사 결정은 담당 심사역이 수행합니다.
+    </div>`;
+}
+
+function openSubmitConfirm() {
+  document.getElementById('submit-confirm').classList.add('show');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function doSubmit() {
+  closeModal('submit-confirm');
+  showToast("제출 중...", "📨");
+  setTimeout(() => {
+    discussionComplete = true;
+    _gotoStep(5);
+  }, 800);
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg, icon) {
+  const el = document.getElementById('toast');
+  const msgEl = document.getElementById('toast-msg');
+  const iconEl = document.getElementById('toast-icon');
+  msgEl.textContent = msg;
+  iconEl.textContent = icon || '✓';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function init() {
+  // Pre-fill biz num for demo
+  setTimeout(() => {
+    const el = document.getElementById('biz-num');
+    if (el) {
+      el.value = '123-45-67890';
+      lookupCompany();
+    }
+  }, 300);
+
+  // Pre-simulate uploads
+  setTimeout(() => {
+    ['fl-0','fl-1','fl-2','fl-3'].forEach((id, i) => {
+      const names = [
+        '재무제표_2022-2024.pdf',
+        '소득금액증명원_2024.pdf',
+        '부가세과세표준증명_2024.pdf',
+        '사업자등록증.pdf'
+      ];
+      const fl = document.getElementById(id);
+      const zone = fl ? fl.closest('.upload-zone') : null;
+      if (zone && fl) {
+        zone.style.borderColor = 'var(--approve)';
+        zone.style.background = '#F1F8F1';
+        fl.innerHTML = `<div class="file-item"><span class="file-icon">📄</span><span class="file-name">${names[i]}</span><span class="file-size">2.${i+1} MB</span><span class="file-ok">✓</span></div>`;
+        uploadedCount++;
+      }
+    });
+  }, 500);
+})();
+</script>
+</body>
+</html>

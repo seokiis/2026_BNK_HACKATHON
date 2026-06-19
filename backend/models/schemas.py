@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -26,13 +28,13 @@ class ReviewItem(BaseModel):
     opinion: str = ""
     grade: Optional[Grade] = None
     data_status: DataStatus = DataStatus.OK
-    evidence: list[Evidence] = []
+    evidence: List[Evidence] = []
     reinforceable: bool = False
 
 
 class ReviewResult(BaseModel):
     case_id: str
-    items: list[ReviewItem] = []
+    items: List[ReviewItem] = []
     summary: str = ""
     status: str = "pending"  # pending | running | done | error
 

@@ -11,7 +11,11 @@ Feature 11 GET    /cases/{id}/export           심사요청서 출력
 Feature 13 POST   /cases/{id}/submit           심사역 제출
 """
 
+from __future__ import annotations
+
+import json
 import uuid
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -64,8 +68,7 @@ async def start_review(case_id: str):
         ):
             yield chunk
             if chunk.startswith("data: RESULT:"):
-                import json
-                raw = chunk.removeprefix("data: RESULT:").strip()
+                raw = chunk[len("data: RESULT:"):].strip()
                 items = [ReviewItem(**i) for i in json.loads(raw)]
 
         case["review"]["items"] = [i.model_dump() for i in items]
@@ -109,6 +112,12 @@ def reinforce(case_id: str, body: ReinforcementRequest):
     if not target:
         raise HTTPException(404, f"항목 '{body.item}' 없음")
 
+    # already_max 판정
+    if body.mode == "risk" and target.get("grade") == "상":
+        return {"reinforced": "", "already_max": True}
+    if body.mode == "data" and target.get("data_status") == "정상":
+        return {"reinforced": "", "already_max": True}
+
     query = f"{body.item} {case['company']['company_info'].get('company_name','')} 보강 근거"
     refs  = rag_search(query, top=3)
     context = "\n".join(r["content"][:400] for r in refs)
@@ -129,7 +138,7 @@ def reinforce(case_id: str, body: ReinforcementRequest):
     reinforced = chat([{"role": "user", "content": prompt}], max_tokens=500)
 
     target["opinion"] = target["opinion"] + "\n\n[보강] " + reinforced
-    return {"reinforced": reinforced}
+    return {"reinforced": reinforced, "already_max": False}
 
 
 # ── Feature 10: 종합 의견 생성 ──────────────────────────────────────────────
@@ -182,6 +191,7 @@ def submit_to_reviewer(case_id: str):
         "business_id": case["business_id"],
         "items": stripped,
         "summary": review.get("summary", ""),
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
