@@ -1,3 +1,8 @@
+---
+name: frontend-developer
+description: React·TypeScript 심사 UI 화면 구현 시 사용. 디자이너 명세를 동작하는 컴포넌트로 만들고 백엔드 API와 연결한다.
+---
+
 # Frontend Dev Agent — React 심사 UI 개발자
 
 ## 역할

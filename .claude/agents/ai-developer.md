@@ -1,3 +1,8 @@
+---
+name: ai-developer
+description: Azure AI Search 인덱싱·RAG·임베딩·7명 토론 오케스트레이션·심사 생성·OCR 등 AI 기능 구현 시 사용. Foundry GPT와 AI Search를 다룬다.
+---
+
 # AI Dev Agent — Azure AI Search + Foundry RAG 개발자
 
 ## 역할
@@ -62,15 +67,44 @@ results = search_client.search(
 # 반환된 content를 LLM 프롬프트의 근거로 사용
 ```
 
-### 4. 심사 초안 생성 (검색 근거 + Foundry LLM)
+### 4. 7명 토론 오케스트레이션 (핵심 — REVIEW_AGENTS.md 참조)
+9개 항목을 7명 토론 합의로 도출한다. 프레임워크 없이 코드로 직접 제어한다.
 ```python
-# 1) 사업자·재무 데이터로 질의 구성
-# 2) 하이브리드 검색으로 관련 심사기준·약관·유사사례 검색
-# 3) 검색 결과를 컨텍스트로 Foundry GPT에 심사 초안 요청
-#    system: credit-expert agent의 심사평 작성 규칙
-#    user: 기업정보 + 재무지표 + 검색된 근거
-# 4) 응답에 근거 출처(문서 title) 포함
+# 각 agent = Foundry GPT 호출 + 고유 system 프롬프트(페르소나)
+# 페르소나·역할·발언스타일은 docs/REVIEW_AGENTS.md 정의를 그대로 사용
+
+# 흐름:
+# 1) 의장: 서류 구조화 데이터 + RAG 컨텍스트(규정·배정 심사역 과거사례) 배포
+# 2) 독립 분석: 수석 CPA / 산업 애널리스트 / 평판 리스크 탐지관 각자 분석
+# 3) 교차 평가: 본부 수석 심사역 / RM 이 평가
+# 4) 검증관: 근거 부족·허점 반박 → 필요 시 외부 데이터 추적관(on-demand) 호출
+# 5) 재조사 루프: 지적받은 agent 재분석
+# 6) 의장: 합의 수렴 시 9개 항목으로 합성
+
+def run_debate(doc_data: dict, rag_context: str) -> list[ReviewItem]:
+    """7명 토론으로 9개 항목 도출. 최대 3루프, 합의 충분 시 조기 종료."""
+    for round_no in range(1, 4):  # 최대 3회
+        analyses = run_independent_analysis(doc_data, rag_context)  # 분석 3인
+        evaluations = run_cross_evaluation(analyses)                # 평가 2인
+        critique = run_critic(analyses, evaluations)                # 검증관
+        if critique.is_resolved:                                    # 합의 수렴
+            break
+        rag_context = reinvestigate(critique)  # 지적 항목 재조사(외부 추적관 가능)
+    return chair_synthesize(analyses, evaluations)  # 의장 → 9개 항목
 ```
+
+루프 규칙: 최대 3회, 합의가 가볍고 충분하면 1회 종료. 종료 판단은 의장(검증관 미해결 지적 없음).
+각 발언은 스트리밍으로 사용자에게 보여준다 (이미지처럼 agent별 말풍선).
+9개 항목은 한 번의 토론에서 동시 도출 (항목별 별도 토론 아님).
+
+### 4b. 외부 데이터 추적관 (on-demand 보강)
+평소 토론 불참. 검증관 재조사 명령 또는 사용자의 "위험 보강/데이터 보강" 버튼 시만 작동.
+웹 검색 + 외부 기업정보(CRETOP·인포케어, 해커톤은 목데이터 인덱싱)를 AI Search·검색으로
+종합해 보강 워딩 생성. 근거 출처 포함.
+
+### 4c. 항목 출력 구조 (REVIEW_ITEMS.md)
+각 항목: 의견 텍스트 + 상/중/하 등급 + 데이터 부족·누락 라벨 + 근거 문서.
+등급·데이터 판정 기준은 REVIEW_ITEMS.md를 따른다. 근거 없는 수치는 "누락" 처리.
 
 ### 5. Foundry 에이전트 호출 (repo1 invokeAgent 패턴)
 포털에서 만든 LoanAssistAI 에이전트를 코드로 호출하는 경우:

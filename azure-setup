@@ -1,0 +1,288 @@
+# Day 1 오전 — Azure 인프라 구축 완전 가이드
+
+> 이 문서대로 끝까지 따라 하면, 마지막에 Azure CLI 로그인만 해주시면
+> Claude Code가 `.env` 파일을 자동으로 채울 수 있는 상태가 됩니다.
+> 한 번도 Azure를 안 써본 사람 기준으로 썼습니다. 순서대로 하세요.
+
+---
+
+## 0. 시작 전 — 이름 규칙 먼저 정하기
+
+Azure는 리소스 이름이 겹치면 안 됩니다. 본인만의 짧은 별칭(alias)을 하나 정하세요.
+예: 이름이 김여신이면 `kimys`. 아래 모든 `<alias>`를 이걸로 바꿉니다.
+
+| 리소스 | 이 가이드에서 쓸 이름 |
+|---|---|
+| 리소스 그룹 | `ai-workshop-rg` |
+| Foundry 프로젝트 | `ai-project-<alias>` |
+| AI Search | `loan-search-<alias>` |
+| Storage 계정 | `loandatasa<alias>` (소문자+숫자만, 하이픈 X) |
+| Blob 컨테이너 | `loan-source` |
+| Container Registry | `loanrepo<alias>` |
+| Container App | `loan-app-<alias>` |
+
+> ⚠️ Storage 계정 이름은 **소문자와 숫자만**, 3~24자, 하이픈 불가. 그래서 `loandatasa<alias>` 형태.
+
+이 작업의 전체 그림: 리소스 그룹 → Foundry+모델 → Search → Storage → 권한(RBAC) → 데이터 업로드 → 지식 연결. 순서가 중요합니다. 앞 단계가 있어야 뒤 단계가 됩니다.
+
+---
+
+## 1. 로그인 & 한국어 설정 (5분)
+
+1. 모바일에 **Microsoft Authenticator** 앱을 설치합니다. (MFA 등록에 필요)
+2. 브라우저에서 [Azure Portal](https://portal.azure.com)에 접속합니다. (시크릿/InPrivate 창 권장)
+3. 해커톤에서 받은 계정으로 로그인합니다. (예: `<alias>@bnksyscokr.onmicrosoft.com`)
+4. MFA 등록 화면이 나오면 `Next` → Authenticator 앱으로 QR 코드 스캔 → 임시 비밀번호 변경.
+5. 로그인되면 우측 상단 **톱니바퀴(설정)** → `Language + region` → Language를 **한국어** → `Apply`.
+
+> 체크포인트: Azure Portal 메인 화면이 한국어로 보이면 성공.
+
+---
+
+## 2. 리소스 그룹 만들기 (3분)
+
+리소스 그룹 = 우리가 만들 모든 것을 담는 폴더라고 생각하세요. 나중에 통째로 삭제하기도 편합니다.
+
+1. 상단 검색창에 `리소스 그룹` 입력 → 메뉴 클릭.
+2. 좌측 상단 `+ 만들기` 클릭.
+3. 입력:
+   - 구독: 본인에게 할당된 구독 선택
+   - 리소스 그룹: `ai-workshop-rg`
+   - 영역: `(Asia Pacific) Korea Central`
+4. `검토 + 만들기` → `만들기`.
+
+> 체크포인트: `ai-workshop-rg`가 리소스 그룹 목록에 보이면 성공.
+
+---
+
+## 3. Microsoft Foundry 프로젝트 + 모델 배포 (15분)
+
+여기가 AI의 두뇌를 만드는 단계입니다.
+
+### 3-1. 프로젝트 생성
+
+1. 새 탭에서 [Microsoft Foundry 포털](https://ai.azure.com)로 이동.
+2. 상단의 **새 Foundry** 토글을 **On**으로.
+3. `새 프로젝트 만들기` 선택.
+4. `고급 옵션`을 펼쳐 아래처럼 구성 후 `만들기`:
+   - 프로젝트: `ai-project-<alias>`
+   - 리소스 그룹: `ai-workshop-rg`
+   - Microsoft Foundry 리소스: `ai-project-<alias>-resource`
+   - 지역: `Korea Central`
+5. 배포 완료 후, 우측 상단 프로필 아이콘 → Settings → Language 한국어 → `Apply`.
+
+### 3-2. 채팅 모델 배포 (심사평을 쓰는 두뇌)
+
+1. 상단 `검색` 메뉴 → 좌측 `모델`.
+2. 검색창에 `gpt` 입력 → 워크숍에서 안내한 채팅 모델 선택 (예: `gpt-4.1` 또는 안내된 최신 모델).
+3. `배포` → `기본 설정` → 배포.
+   - 배포 이름은 기본값 그대로 두세요. 나중에 `.env`에 그대로 들어갑니다.
+
+### 3-3. 임베딩 모델 배포 (문서를 벡터로 바꾸는 변환기)
+
+1. 같은 모델 화면에서 `기본 모델 배포` 클릭.
+2. `text-embedding-3-large` 검색 → 선택 → `배포`.
+   - 배포 이름도 기본값(`text-embedding-3-large`) 그대로.
+
+> 체크포인트: 모델 목록에 채팅 모델 1개 + 임베딩 모델 1개가 "배포됨" 상태로 보이면 성공.
+> 이 두 배포 이름을 메모해두세요. `.env`의 `AZURE_OPENAI_CHAT_DEPLOYMENT`, `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`에 들어갑니다.
+
+---
+
+## 4. Azure AI Search 만들기 (10분)
+
+심사 근거 문서를 검색하는 검색 엔진입니다.
+
+1. [Azure Portal](https://portal.azure.com)로 돌아와 상단 검색창에 `AI Search` 입력 → 메뉴 선택.
+2. `만들기` 클릭. 구성:
+   - 리소스 그룹: `ai-workshop-rg`
+   - 서비스 이름: `loan-search-<alias>`
+   - 위치: `Korea Central`
+   - 가격 책정 계층: `표준`(Standard) — 시맨틱 재랭킹을 쓰려면 Basic 이상 필요
+3. `검토 + 만들기` → `만들기` → 완료 후 `리소스로 이동`.
+4. **중요 — Managed Identity 켜기**: 좌측 메뉴 `설정` > `ID` → `시스템 할당` 상태를 `켜기` → `저장`.
+   - 이게 켜져야 Search가 키 없이 Storage·Foundry에 접근할 수 있습니다. (RBAC에서 필요)
+
+> 체크포인트: AI Search 리소스의 ID 페이지에서 "개체(주체) ID"가 보이면 성공. 이 값을 메모. (RBAC 단계에서 씀)
+
+---
+
+## 5. Storage 계정 + 데이터 업로드 (15분)
+
+심사 문서(상품 정보·약관·FAQ·심사 가이드)를 올려두는 창고입니다.
+
+### 5-1. Storage 계정 생성
+
+1. 상단 검색창에 `스토리지 계정` → 메뉴 선택 → `만들기`.
+2. 기본 탭:
+   - 리소스 그룹: `ai-workshop-rg`
+   - 스토리지 계정 이름: `loandatasa<alias>`
+   - 지역: `Korea Central`
+   - 성능: `표준`
+   - 중복도: `LRS`(해커톤은 LRS로 충분, 비용 절약)
+3. `고급` 탭에서 **`계층 구조 네임스페이스 사용`** 체크.
+4. `검토 + 만들기` → `만들기` → `리소스로 이동`.
+
+### 5-2. 컨테이너 만들고 데이터 업로드
+
+1. 좌측 메뉴 `데이터 스토리지` > `컨테이너` → `+ 컨테이너`.
+2. 이름 `loan-source` → `만들기`.
+3. `loan-source` 클릭 → `업로드` → 심사용 데이터 파일 업로드.
+   이 서비스(7명 토론 + 9개 항목)가 RAG로 검색할 지식 문서를 올립니다:
+   - 여신 규정·심사 기준 (9개 항목별 등급 기준, REVIEW_ITEMS.md 참조)
+   - 대출 실행된 과거 심사사례의 심사의견 (배정 심사역별)
+   - 정답 목데이터: 소득금액증명원, 부가세 과세표준 증명원, 재무제표, 매출자료, 경매가액
+   - 외부 보강용 목데이터: CRETOP·인포케어 형식의 기업정보 (외부 데이터 추적관이 검색)
+   - 해커톤이라 실데이터가 없으면, 위 형식의 JSON 목데이터를 직접 만들어 올립니다.
+
+> 데이터 형식·스키마는 ai-developer agent에게 "REVIEW_AGENTS.md 기준 RAG 인덱스
+> 스키마 설계해줘"라고 하면 짜줍니다. 그 스키마에 맞춰 목데이터를 만드세요.
+
+> 체크포인트: `loan-source` 컨테이너 안에 파일들이 보이면 성공.
+
+---
+
+## 6. 권한 설정 (RBAC) — 가장 헷갈리지만 가장 중요 (15분)
+
+"누가 무엇에 접근할 수 있는가"를 정하는 단계입니다. 금융 시스템 평가에서 핵심 가산점.
+포털로 일일이 하면 오래 걸리니 **Cloud Shell(웹 터미널)로 한 번에** 하겠습니다.
+
+1. Azure Portal 상단의 **Cloud Shell** 아이콘(`>_` 모양) 클릭.
+2. `Bash` 선택 → `스토리지 계정이 필요하지 않음` 선택 → 구독 선택 → `적용`.
+3. 아래를 본인 값으로 바꿔서 붙여넣습니다.
+
+```bash
+# ===== 변수 정의 (본인 값으로 수정) =====
+export RG_NAME="ai-workshop-rg"
+export SUB_ID=$(az account show --query id -o tsv)
+export RG_SCOPE="/subscriptions/$SUB_ID/resourceGroups/$RG_NAME"
+export USER_EMAIL="<alias>@bnksyscokr.onmicrosoft.com"
+
+# Foundry 프로젝트 리소스의 관리 ID 개체 ID (포털: Foundry 리소스 > ID 페이지에서 복사)
+export HUB_PRINCIPAL_ID="여기에_Foundry_관리ID_개체ID"
+# AI Search의 관리 ID 개체 ID (4단계에서 메모한 값)
+export SEARCH_PRINCIPAL_ID="여기에_AISearch_관리ID_개체ID"
+```
+
+```bash
+# ===== (1) 나(실습자)에게 모든 제어 권한 부여 =====
+for role in "Azure AI Developer" "Search Index Data Contributor" "Search Service Contributor" "Storage Blob Data Contributor"; do
+    az role assignment create --assignee "$USER_EMAIL" --role "$role" --scope $RG_SCOPE
+done
+```
+
+```bash
+# ===== (2) Foundry가 Search/Storage/OpenAI에 접근 =====
+for role in "Cognitive Services OpenAI User" "Search Index Data Contributor" "Search Service Contributor" "Storage Blob Data Contributor"; do
+    az role assignment create --assignee-object-id $HUB_PRINCIPAL_ID --role "$role" --scope $RG_SCOPE --assignee-principal-type ServicePrincipal
+done
+```
+
+```bash
+# ===== (3) AI Search가 Storage 읽기 + 임베딩 모델 호출 =====
+for role in "Storage Blob Data Reader" "Cognitive Services OpenAI User"; do
+    az role assignment create --assignee-object-id $SEARCH_PRINCIPAL_ID --role "$role" --scope $RG_SCOPE --assignee-principal-type ServicePrincipal
+done
+```
+
+> 관리 ID 개체 ID 찾는 법: 각 리소스(Foundry, Search)의 좌측 메뉴 `ID` > `시스템 할당` 탭에 있는 "개체(주체) ID"가 그 값입니다.
+> 체크포인트: 세 블록 모두 에러 없이 실행되면 성공. (이미 있다는 메시지는 괜찮음)
+
+---
+
+## 7. Foundry IQ로 지식 연결 (15분)
+
+업로드한 문서를 검색 가능한 "지식"으로 만들고 에이전트에 붙입니다.
+
+### 7-1. 지식 원본(Knowledge Source) 만들기
+
+1. 포털에서 AI Search `loan-search-<alias>`로 이동.
+2. 좌측 `에이전트 검색` > `지식 원본` → `지식 원본 추가`.
+3. `Azure Blob(인덱싱됨)` 선택:
+   - 이름: `loan-knowledge-source`
+   - 스토리지 계정: `loandatasa<alias>`
+   - Blob 컨테이너: `loan-source`
+4. `텍스트 벡터화 사용` → `벡터라이저 추가`:
+   - 종류: Microsoft Foundry
+   - 프로젝트: `ai-project-<alias>`
+   - 모델 배포: `text-embedding-3-large`
+5. `저장` → `만들기`.
+
+### 7-2. 지식 기반(Knowledge Base) 만들기
+
+1. 같은 화면 좌측 `에이전트 검색` > `지식 기반` → `지식 기반 추가`.
+2. 구성:
+   - 이름: `loan-search-base`
+   - 지식 원본: 기존 항목 추가 → 위에서 만든 Blob 선택
+   - 검색용 모델: 종류 Microsoft Foundry / 프로젝트 `ai-project-<alias>` / 채팅 모델 배포 선택
+3. `저장`.
+
+### 7-3. 에이전트 만들고 지식 붙이기
+
+1. [Foundry 포털](https://ai.azure.com) → 채팅 모델 플레이그라운드 → `에이전트로 저장`.
+2. 에이전트 이름: `LoanAssistAI` → `만들기`.
+3. `지침`에 여신심사용 지침을 넣습니다. (별도 제공할 credit-expert 지침 사용)
+4. `지식` 섹션 → `추가` → `Foundry IQ에 연결`:
+   - 연결: `loan-search-<alias>`
+   - 지식 기반: `loan-search-base`
+5. 테스트 프롬프트로 검색이 도는지 확인. 도구 승인 팝업에서 `항상 이 도구 승인`.
+
+> 체크포인트: 에이전트가 업로드한 문서 내용을 근거로 답하면 RAG 성공. 상단 `로그`에서 도구 호출 확인 가능.
+
+---
+
+## 8. 마지막 — Azure CLI 로그인 (이후 Claude Code가 .env 채움)
+
+여기까지 했으면 인프라는 완성입니다. 이제 VSCode 터미널에서:
+
+```bash
+# Azure CLI 설치 안 됐으면 (Mac)
+brew install azure-cli
+# 로그인
+az login
+# 본인 구독 확인
+az account show
+```
+
+`az login`이 완료되면 Claude Code에게 이렇게 말하세요:
+
+> "az 로그인 했어. .env 채워줘"
+
+그러면 Claude Code가 `az` 명령으로 엔드포인트·키를 조회해서 `.env`를 자동으로 채웁니다.
+(다음 섹션의 스크립트를 Claude Code가 실행합니다.)
+
+---
+
+## 부록 A — 완성된 인프라 체크리스트
+
+작업 끝나고 이 표로 한 번에 점검하세요.
+
+| # | 확인 항목 | 완료 |
+|---|---|---|
+| 1 | `ai-workshop-rg` 리소스 그룹 존재 | ☐ |
+| 2 | Foundry 프로젝트 + 채팅 모델 배포됨 | ☐ |
+| 3 | 임베딩 모델(text-embedding-3-large) 배포됨 | ☐ |
+| 4 | AI Search 생성 + Managed Identity 켜짐 | ☐ |
+| 5 | Storage 계정 + `loan-source` 컨테이너 + 데이터 업로드 | ☐ |
+| 6 | RBAC 3블록 실행 완료 | ☐ |
+| 7 | 지식 원본 + 지식 기반 생성 | ☐ |
+| 8 | 에이전트 `LoanAssistAI` 생성 + 지식 연결 | ☐ |
+| 9 | `az login` 완료 | ☐ |
+
+---
+
+## 부록 B — .env에 들어갈 값과 출처
+
+Claude Code가 채울 값들입니다. 어디서 오는지 알아두면 디버깅이 쉽습니다.
+
+| .env 키 | 의미 | 출처 |
+|---|---|---|
+| `AZURE_OPENAI_ENDPOINT` | Foundry/OpenAI 엔드포인트 | `az cognitiveservices account show` |
+| `AZURE_OPENAI_CHAT_DEPLOYMENT` | 채팅 모델 배포 이름 | 3-2에서 메모한 값 |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | 임베딩 모델 배포 이름 | 3-3에서 메모한 값 |
+| `AZURE_OPENAI_API_VERSION` | API 버전 | 워크숍 안내값 (예: 2025-04-01-preview) |
+| `AZURE_SEARCH_ENDPOINT` | Search 엔드포인트 | `https://loan-search-<alias>.search.windows.net` |
+| `AZURE_SEARCH_KEY` | Search 관리자 키 | `az search admin-key show` |
+| `AZURE_SEARCH_INDEX` | 인덱스 이름 | 지식 원본 생성 시 이름 |
+
+> 보안: `.env`는 절대 git에 커밋하지 마세요. `.gitignore`에 `.env` 추가는 Claude Code가 해둡니다.

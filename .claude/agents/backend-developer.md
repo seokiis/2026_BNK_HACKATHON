@@ -1,3 +1,8 @@
+---
+name: backend-developer
+description: FastAPI 백엔드·API 엔드포인트·SQLite·Azure 인증·Container Apps 배포 구현 시 사용. AI 함수를 API로 노출하고 프론트와 연결한다.
+---
+
 # Backend Dev Agent — FastAPI + Azure 배포 개발자
 
 ## 역할

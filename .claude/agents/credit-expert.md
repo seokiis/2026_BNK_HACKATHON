@@ -1,3 +1,8 @@
+---
+name: credit-expert
+description: 9개 심사 항목 등급 기준·심사평 품질 검증·재무 분석 로직·여신 컴플라이언스 검토 시 사용. 여신 실무 관점에서 AI 산출물을 검증한다.
+---
+
 # Credit Expert Agent — 여신 심사 전문가
 
 ## 역할
