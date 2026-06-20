@@ -1,0 +1,154 @@
+{
+  "1268164926": {
+    "company_info": {
+      "company_name": "한양정밀테크",
+      "internal_credit_rating": "A",
+      "css_credit_rating": "AA",
+      "industry_code": "C29",
+      "dart_code": "00164742"
+    },
+    "income_certificate": {
+      "issue_date": "2025-03-10",
+      "taxable_salary": 15200000000,
+      "income_type": "Business"
+    },
+    "vat_tax_certificate": {
+      "issue_date": "2025-07-01",
+      "annual_revenue_1yr": 22000000000,
+      "business_period_months": 156
+    },
+    "financial_statements": {
+      "fiscal_year": "2024",
+      "total_assets": 18000000000,
+      "total_liabilities": 8000000000,
+      "operating_income": 1750000000,
+      "finance_cost_interest": 500000000
+    },
+    "sales_data": {
+      "annual_sales_by_year": {
+        "2023": 15000000000,
+        "2024": 18000000000,
+        "2025": 22000000000
+      }
+    },
+    "collateral_auction_value": {
+      "collateral_appraisal_value": 8000000000,
+      "regional_auction_rate_1yr": 0.82,
+      "regional_auction_count_1yr": 47
+    }
+  },
+  "2345678901": {
+    "company_info": {
+      "company_name": "동진반도체소재",
+      "internal_credit_rating": "BB+",
+      "css_credit_rating": "BBB",
+      "industry_code": "C26",
+      "dart_code": "00401731"
+    },
+    "income_certificate": {
+      "issue_date": "2025-03-15",
+      "taxable_salary": 28000000000,
+      "income_type": "Business"
+    },
+    "vat_tax_certificate": {
+      "issue_date": "2025-07-01",
+      "annual_revenue_1yr": 38000000000,
+      "business_period_months": 108
+    },
+    "financial_statements": {
+      "fiscal_year": "2024",
+      "total_assets": 14000000000,
+      "total_liabilities": 10000000000,
+      "operating_income": 1800000000,
+      "finance_cost_interest": 1500000000
+    },
+    "sales_data": {
+      "annual_sales_by_year": {
+        "2023": 20000000000,
+        "2024": 28000000000,
+        "2025": 38000000000
+      }
+    },
+    "collateral_auction_value": {
+      "collateral_appraisal_value": 6000000000,
+      "regional_auction_rate_1yr": 0.78,
+      "regional_auction_count_1yr": 32
+    }
+  },
+  "3456789012": {
+    "company_info": {
+      "company_name": "삼원건설개발",
+      "internal_credit_rating": "BB-",
+      "css_credit_rating": "BB",
+      "industry_code": "F41",
+      "dart_code": "00128884"
+    },
+    "income_certificate": {
+      "issue_date": "2025-03-20",
+      "taxable_salary": 18000000000,
+      "income_type": "Business"
+    },
+    "vat_tax_certificate": {
+      "issue_date": "2025-07-01",
+      "annual_revenue_1yr": 19000000000,
+      "business_period_months": 204
+    },
+    "financial_statements": {
+      "fiscal_year": "2024",
+      "total_assets": 12000000000,
+      "total_liabilities": 9000000000,
+      "operating_income": 2000000000,
+      "finance_cost_interest": 2500000000
+    },
+    "sales_data": {
+      "annual_sales_by_year": {
+        "2023": 30000000000,
+        "2024": 25000000000,
+        "2025": 19000000000
+      }
+    },
+    "collateral_auction_value": {
+      "collateral_appraisal_value": 5000000000,
+      "regional_auction_rate_1yr": 0.65,
+      "regional_auction_count_1yr": 18
+    }
+  },
+  "4567890123": {
+    "company_info": {
+      "company_name": "남해바이오팜",
+      "internal_credit_rating": "BBB",
+      "css_credit_rating": "BBB+",
+      "industry_code": "C21",
+      "dart_code": "00359273"
+    },
+    "income_certificate": {
+      "issue_date": "2025-03-25",
+      "taxable_salary": 14500000000,
+      "income_type": "Business"
+    },
+    "vat_tax_certificate": {
+      "issue_date": "2025-07-01",
+      "annual_revenue_1yr": 18500000000,
+      "business_period_months": 132
+    },
+    "financial_statements": {
+      "fiscal_year": "2024",
+      "total_assets": 11800000000,
+      "total_liabilities": 7800000000,
+      "operating_income": 1280000000,
+      "finance_cost_interest": 800000000
+    },
+    "sales_data": {
+      "annual_sales_by_year": {
+        "2023": 12000000000,
+        "2024": 15000000000,
+        "2025": 18500000000
+      }
+    },
+    "collateral_auction_value": {
+      "collateral_appraisal_value": 4500000000,
+      "regional_auction_rate_1yr": 0.77,
+      "regional_auction_count_1yr": 28
+    }
+  }
+}

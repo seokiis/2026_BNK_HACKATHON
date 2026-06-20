@@ -1,0 +1,2859 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>AI 여신심사 어시스턴트 — BNK 경남은행</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary:    #C61530;
+    --primary-lt: #D93248;
+    --approve:    #2E7D32;
+    --danger:     #C62828;
+    --warning:    #E65100;
+    --text:       #37474F;
+    --text-lt:    #607D8B;
+    --bg:         #F5F7FA;
+    --surface:    #FFFFFF;
+    --border:     #CFD8DC;
+    --grade-h-bg: #E8F5E9; --grade-h-tx: #2E7D32;
+    --grade-m-bg: #FFF3E0; --grade-m-tx: #E65100;
+    --grade-l-bg: #FFEBEE; --grade-l-tx: #C62828;
+    --data-ok-bg: #E8F5E9; --data-ok-tx: #2E7D32;
+    --data-ft-bg: #FFF3E0; --data-ft-tx: #E65100;
+    --data-ms-bg: #FFEBEE; --data-ms-tx: #C62828;
+  }
+
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    min-width: 1280px;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--primary);
+    color: #fff;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .app-header .logo {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+  }
+  .app-header .logo span { color: #FFA8B5; }
+  .app-header .divider { width: 1px; height: 20px; background: rgba(255,255,255,.3); }
+  .app-header .subtitle { font-size: 13px; color: rgba(255,255,255,.75); }
+  .app-header .spacer { flex: 1; }
+  .app-header .user-info { font-size: 12px; color: rgba(255,255,255,.8); }
+
+  /* ── STEP BAR ── */
+  .step-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    height: 52px;
+    gap: 0;
+  }
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    height: 52px;
+    cursor: pointer;
+    position: relative;
+    font-size: 13px;
+    color: var(--text-lt);
+    white-space: nowrap;
+    transition: color .15s;
+  }
+  .step-item:hover { color: var(--primary); }
+  .step-item.active { color: var(--primary); font-weight: 600; }
+  .step-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--primary);
+  }
+  .step-item.done { color: var(--approve); }
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    background: var(--border);
+    color: var(--text-lt);
+    flex-shrink: 0;
+  }
+  .step-item.active .step-num { background: var(--primary); color: #fff; }
+  .step-item.done .step-num { background: var(--approve); color: #fff; }
+  .step-arrow { color: var(--border); font-size: 12px; padding: 0 4px; }
+
+  /* ── MAIN CONTENT ── */
+  .main-content {
+    padding: 24px;
+    min-height: calc(100vh - 104px);
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon { font-size: 16px; }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; gap: 16px; }
+  .form-grid-2 { grid-template-columns: 1fr 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-lt);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+  }
+  .form-label .required { color: var(--danger); margin-left: 2px; }
+  .form-control {
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(198,21,48,.12);
+  }
+  select.form-control { cursor: pointer; }
+  .form-hint { font-size: 11px; color: var(--text-lt); }
+  .form-error { font-size: 11px; color: var(--danger); display: none; }
+
+  /* ── ASSIGNED REVIEWER BANNER ── */
+  .reviewer-banner {
+    background: #FFF0F2;
+    border: 1px solid #FFAAB5;
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .reviewer-banner .rv-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .reviewer-banner .rv-label { font-size: 11px; color: var(--text-lt); }
+  .reviewer-banner .rv-name { font-size: 15px; font-weight: 600; color: var(--primary); }
+  .reviewer-banner .rv-sub { font-size: 12px; color: var(--text-lt); margin-top: 2px; }
+  .reviewer-banner .rv-tag {
+    margin-left: auto;
+    background: #FFD6DB;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* ── UPLOAD AREA ── */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--primary);
+    background: #FFF0F2;
+  }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-title { font-weight: 600; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--text-lt); }
+  .upload-tag {
+    display: inline-block;
+    margin-top: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    color: var(--text-lt);
+  }
+  .file-list { margin-top: 10px; }
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border-radius: 4px;
+    margin-top: 4px;
+    font-size: 12px;
+  }
+  .file-item .file-icon { color: var(--primary); }
+  .file-item .file-name { flex: 1; }
+  .file-item .file-size { color: var(--text-lt); }
+  .file-item .file-ok { color: var(--approve); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-lt); }
+  .btn-success { background: var(--approve); color: #fff; }
+  .btn-success:hover { background: #1B5E20; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #8B0000; }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-warning { background: var(--warning); color: #fff; }
+  .btn-warning:hover { background: #BF360C; }
+  .btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
+  .btn-lg { height: 44px; padding: 0 24px; font-size: 15px; }
+
+  /* ── SCREEN 1 LAYOUT ── */
+  .s1-layout { display: grid; grid-template-columns: 1fr 420px; gap: 20px; }
+
+  /* ── SCREEN 2: AI DISCUSSION ── */
+  .discussion-layout { display: grid; grid-template-columns: 220px 240px 1fr; gap: 16px; height: calc(100vh - 160px); }
+  .agent-list { display: flex; flex-direction: column; gap: 6px; }
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .agent-card.speaking {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(198,21,48,.15);
+  }
+  .agent-card.done { opacity: .6; }
+  .agent-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .agent-name { font-size: 12px; font-weight: 600; }
+  .agent-role { font-size: 10px; color: var(--text-lt); display: none; }
+  .agent-status {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .status-speaking { background: #FFF0F2; color: var(--primary); }
+  .status-done { background: var(--grade-h-bg); color: var(--approve); }
+  .status-wait { background: var(--bg); color: var(--text-lt); }
+
+  .chat-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .chat-header .ch-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .round-badge {
+    background: #FFF0F2;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .progress-wrap { padding: 10px 18px; border-bottom: 1px solid var(--border); }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-lt);
+    margin-bottom: 6px;
+  }
+  .progress-bar-bg {
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), #E05070);
+    border-radius: 3px;
+    transition: width .4s ease;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .bubble-wrap { display: flex; align-items: flex-start; gap: 10px; }
+  .bubble-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .bubble-body { max-width: 75%; }
+  .bubble-meta { font-size: 11px; color: var(--text-lt); margin-bottom: 4px; }
+  .bubble {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0 10px 10px 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .bubble.chairman { border-color: var(--primary); background: #FFF0F2; }
+  .bubble.critic { border-color: var(--danger); background: #FFF5F5; }
+  .bubble-typing {
+    display: flex; gap: 4px; align-items: center; padding: 12px 14px;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-lt);
+    animation: bounce .9s infinite;
+  }
+  .dot:nth-child(2) { animation-delay: .15s; }
+  .dot:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* ── SCREEN 3: REVIEW ITEMS ── */
+  .review-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+  .items-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .item-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .item-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .item-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .item-name { font-size: 15px; font-weight: 600; flex: 1; }
+  .badge-row { display: flex; gap: 6px; align-items: center; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: default;
+    position: relative;
+    transition: all .15s;
+  }
+
+  /* grade badges */
+  .badge-h { background: var(--grade-h-bg); color: var(--grade-h-tx); }
+  .badge-m { background: var(--grade-m-bg); color: var(--grade-m-tx); }
+  .badge-l { background: var(--grade-l-bg); color: var(--grade-l-tx); }
+
+  /* data badges */
+  .badge-ok   { background: var(--data-ok-bg); color: var(--data-ok-tx); }
+  .badge-lack { background: var(--data-ft-bg); color: var(--data-ft-tx); }
+  .badge-miss { background: var(--data-ms-bg); color: var(--data-ms-tx); }
+
+  /* hover → reinforce button */
+  .badge-reinforce-wrap { position: relative; display: inline-flex; }
+  .badge-reinforce-wrap .badge { transition: opacity .15s; }
+  .badge-reinforce-wrap .reinforce-btn {
+    display: none;
+    position: absolute;
+    inset: 0;
+    border: none;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 0 10px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all .15s;
+  }
+  .reinforce-btn.risk { background: var(--danger); color: #fff; }
+  .reinforce-btn.data { background: var(--warning); color: #fff; }
+  .badge-reinforce-wrap:hover .badge { opacity: 0; }
+  .badge-reinforce-wrap:hover .reinforce-btn { display: flex; }
+
+  .item-chevron { color: var(--text-lt); font-size: 12px; transition: transform .2s; }
+  .item-card.open .item-chevron { transform: rotate(180deg); }
+
+  .item-body { display: none; padding: 16px 18px; }
+  .item-card.open .item-body { display: block; }
+
+  .opinion-textarea {
+    width: 100%;
+    min-height: 100px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .opinion-textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(198,21,48,.1);
+  }
+  .ai-hint {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #FFFDE7;
+    border: 1px solid #FFF176;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #795548;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-hint.show { display: flex; }
+  .ai-hint .ai-icon { font-size: 14px; flex-shrink: 0; }
+
+  .evidence-section { margin-top: 14px; }
+  .evidence-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-lt);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    margin-bottom: 8px;
+  }
+  .evidence-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .evidence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: #FFF0F2;
+    border: 1px solid #FFAAB5;
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--primary);
+    cursor: pointer;
+    transition: background .15s;
+    position: relative;
+  }
+  .evidence-chip:hover { background: #FFD6DB; }
+  .evidence-chip .chip-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    background: #263238;
+    color: #fff;
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 280px;
+    line-height: 1.5;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .evidence-chip:hover .chip-tooltip { display: block; }
+
+  /* ── SIDE PANEL ── */
+  .side-panel { display: flex; flex-direction: column; gap: 16px; }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .summary-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-lt);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    margin-bottom: 12px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--bg);
+    font-size: 13px;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-key { color: var(--text-lt); }
+  .summary-val { font-weight: 600; }
+
+  .doc-list { display: flex; flex-direction: column; gap: 6px; }
+  .doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .doc-item .doc-icon { font-size: 14px; flex-shrink: 0; }
+  .doc-item .doc-name { flex: 1; }
+  .doc-item .doc-status { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+  .doc-status-ok { background: var(--grade-h-bg); color: var(--approve); }
+  .doc-status-warn { background: var(--grade-m-bg); color: var(--warning); }
+  .doc-status-err { background: var(--grade-l-bg); color: var(--danger); }
+
+  /* ── SCREEN 4: SUBMIT ── */
+  .submit-layout { max-width: 900px; margin: 0 auto; }
+  .comprehensive-textarea {
+    width: 100%;
+    min-height: 200px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .comprehensive-textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(198,21,48,.1);
+  }
+  .ai-draft-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #FFF8E1;
+    border: 1px solid #FFE082;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #795548;
+    padding: 3px 8px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .action-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 20px 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    position: sticky;
+    bottom: 0;
+  }
+  .action-bar .spacer { flex: 1; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    max-width: 800px;
+    width: 90%;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-title { font-size: 17px; font-weight: 700; flex: 1; }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-lt);
+    transition: background .15s;
+  }
+  .modal-close:hover { background: var(--border); }
+  .modal-body {
+    overflow-y: auto;
+    padding: 24px;
+    flex: 1;
+  }
+
+  /* preview content */
+  .preview-header {
+    text-align: center;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+  }
+  .preview-bank { font-size: 13px; color: var(--text-lt); margin-bottom: 4px; }
+  .preview-title { font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+  .preview-meta { font-size: 12px; color: var(--text-lt); }
+  .preview-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .preview-info-cell {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 6px;
+  }
+  .preview-info-cell .pik { font-weight: 600; color: var(--text-lt); white-space: nowrap; }
+  .preview-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    border-left: 3px solid var(--primary);
+    padding-left: 10px;
+    margin: 16px 0 10px;
+  }
+  .preview-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .preview-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .preview-item-body {
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  /* ── CONFIRM DIALOG ── */
+  .confirm-modal { max-width: 440px; }
+  .confirm-icon { font-size: 40px; text-align: center; margin-bottom: 12px; }
+  .confirm-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+  .confirm-body { font-size: 14px; color: var(--text-lt); text-align: center; line-height: 1.6; }
+  .confirm-notice {
+    margin-top: 14px;
+    padding: 12px;
+    background: #FFF5F5;
+    border: 1px solid #FFCDD2;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--danger);
+    text-align: center;
+  }
+
+  /* ── REINFORCE LOADING ── */
+  .reinforce-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+  }
+  .reinforce-overlay.show { display: flex; }
+  .reinforce-box {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 32px 40px;
+    text-align: center;
+    box-shadow: 0 16px 48px rgba(0,0,0,.2);
+    min-width: 360px;
+  }
+  .reinforce-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .reinforce-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .reinforce-sub { font-size: 13px; color: var(--text-lt); }
+  .reinforce-steps {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .reinforce-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-lt);
+    padding: 6px 10px;
+    border-radius: 4px;
+  }
+  .reinforce-step.active { background: #FFF0F2; color: var(--primary); font-weight: 600; }
+  .reinforce-step.done { color: var(--approve); }
+
+  /* ── SUCCESS TOAST ── */
+  .toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #263238;
+    color: #fff;
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 400;
+    box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    align-items: center;
+    gap: 10px;
+    animation: slideIn .2s ease;
+  }
+  .toast.show { display: flex; }
+  @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .toast-icon { font-size: 18px; }
+
+  /* ── SUBMIT SUCCESS ── */
+  .success-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    text-align: center;
+  }
+  .success-icon { font-size: 64px; margin-bottom: 20px; }
+  .success-title { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+  .success-body { font-size: 15px; color: var(--text-lt); line-height: 1.7; margin-bottom: 28px; max-width: 500px; }
+  .success-ticket {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 32px;
+    min-width: 380px;
+    text-align: left;
+  }
+  .ticket-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 14px;
+  }
+  .ticket-row:last-child { border-bottom: none; }
+  .ticket-key { color: var(--text-lt); }
+  .ticket-val { font-weight: 600; }
+
+  /* ── UTIL ── */
+  .flex { display: flex; }
+  .flex-col { display: flex; flex-direction: column; }
+  .items-center { align-items: center; }
+  .gap-8 { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .mb-8 { margin-bottom: 8px; }
+  .text-sm { font-size: 12px; }
+  .text-muted { color: var(--text-lt); }
+  .font-600 { font-weight: 600; }
+  .w-full { width: 100%; }
+
+  .info-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #FFF0F2;
+    color: var(--primary);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #B0BEC5; }
+
+  /* contenteditable opinion editor */
+  .opinion-editor {
+    width: 100%;
+    min-height: 110px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+    overflow-y: auto;
+  }
+  .opinion-editor:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(198,21,48,.1);
+  }
+  .opinion-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-lt);
+    pointer-events: none;
+  }
+
+  /* HTML tables inside opinions */
+  .op-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 12px;
+  }
+  .op-table th {
+    background: var(--bg);
+    padding: 6px 10px;
+    text-align: left;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    color: var(--text-lt);
+  }
+  .op-table td {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+  }
+  .op-table tr:hover td { background: #F9FBFC; }
+
+  /* warning hint variant */
+  .ai-hint.warning {
+    background: #FFEBEE;
+    border-color: #FFCDD2;
+    color: var(--danger);
+  }
+
+  /* doc status badges */
+  .badge-suf  { background: var(--data-ok-bg); color: var(--data-ok-tx); }
+  .badge-insuf { background: var(--data-ft-bg); color: var(--data-ft-tx); }
+
+  /* no-reinforce toast (bottom-right) */
+  .toast-br {
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    display: none;
+    z-index: 200;
+    align-items: center;
+    gap: 8px;
+    max-width: 320px;
+  }
+  .toast-br.show { display: flex; }
+
+  /* ── REVIEWER BANNER BASIS LINE ── */
+  .reviewer-banner .rv-basis {
+    font-size: 11px;
+    color: var(--primary);
+    font-weight: 600;
+    margin-top: 3px;
+    background: #FFF0F2;
+    border-radius: 4px;
+    padding: 2px 6px;
+    display: inline-block;
+  }
+
+  /* ── CRITICIZED AGENT STATE ── */
+  .agent-card.criticized {
+    border-color: var(--danger);
+    background: #FFF5F5;
+  }
+  .status-criticized {
+    background: var(--grade-l-bg);
+    color: var(--danger);
+  }
+  .agent-card.critic-resolved {
+    border-color: var(--approve);
+    background: #F1F8F1;
+  }
+
+  /* ── CRITIC TRACKER PANEL (middle column) ── */
+  .critic-tracker {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .critic-tracker-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--danger);
+    letter-spacing: .3px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .critic-tracker-title .ct-icon { font-size: 14px; }
+  .critic-tracker-empty {
+    font-size: 12px;
+    color: var(--text-lt);
+    text-align: center;
+    padding: 24px 8px;
+    line-height: 1.6;
+  }
+  .critic-tracker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ct-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #FFCDD2;
+    background: #FFF5F5;
+    animation: ctSlideIn .3s ease;
+  }
+  .ct-item.resolved {
+    border-color: #C8E6C9;
+    background: #F1F8F1;
+  }
+  @keyframes ctSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .ct-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  .ct-item-who {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--danger);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .ct-item.resolved .ct-item-who { color: var(--approve); }
+  .ct-item-status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .ct-status-pending { background: #FFEBEE; color: var(--danger); }
+  .ct-status-resolved { background: var(--grade-h-bg); color: var(--approve); }
+  .ct-item-issue {
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 4px;
+    padding-left: 2px;
+  }
+  .ct-item-fix {
+    font-size: 11px;
+    color: var(--approve);
+    font-weight: 500;
+    line-height: 1.5;
+    padding-left: 2px;
+    display: none;
+  }
+  .ct-item.resolved .ct-item-fix { display: block; }
+
+  /* legacy compat — keep old panel hidden */
+  .critic-panel { display: none !important; }
+  .critic-panel.has-items { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ==================== HEADER ==================== -->
+<header class="app-header" role="banner">
+  <div class="logo">BNK <span>경남은행</span></div>
+  <div class="divider"></div>
+  <div class="subtitle">AI 여신심사 어시스턴트</div>
+  <div class="spacer"></div>
+  <div class="user-info">영업점 RM &nbsp;|&nbsp; 창원중앙지점 &nbsp;|&nbsp; 김철수</div>
+</header>
+
+<!-- ==================== STEP BAR ==================== -->
+<nav class="step-bar" role="navigation" aria-label="심사 단계">
+  <div class="step-item done" onclick="gotoStep(1)" id="step-1">
+    <div class="step-num">&#10003;</div>서류 등록
+  </div>
+  <div class="step-arrow">›</div>
+  <div class="step-item active" onclick="gotoStep(2)" id="step-2">
+    <div class="step-num">2</div>AI 토론 분석
+  </div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" onclick="gotoStep(3)" id="step-3">
+    <div class="step-num">3</div>심사 항목 결과
+  </div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" onclick="gotoStep(4)" id="step-4">
+    <div class="step-num">4</div>제출 완료
+  </div>
+</nav>
+
+<!-- ==================== MAIN ==================== -->
+<main class="main-content" role="main">
+
+  <!-- ======== SCREEN 1: 서류 등록 ======== -->
+  <section class="screen active" id="screen-1" aria-label="서류 등록">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div>
+        <h1 style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">서류 등록</h1>
+        <p class="text-muted text-sm">고객 사업자번호를 입력하면 담당 심사역이 자동 배정됩니다.</p>
+      </div>
+    </div>
+
+    <!-- 사업자번호 -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title"><span class="icon">&#128265;</span>기업 조회</div>
+      <div class="form-grid form-grid-3" style="margin-bottom:16px;">
+        <div class="form-group">
+          <label class="form-label">사업자등록번호<span class="required">*</span></label>
+          <input class="form-control" id="biz-num" type="text" placeholder="000-00-00000" maxlength="12"
+            oninput="formatBizNum(this)" onblur="lookupCompany()" aria-required="true" aria-describedby="biz-hint">
+          <span class="form-hint" id="biz-hint">10자리 숫자 자동 하이픈</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">상호명</label>
+          <input class="form-control" id="company-name" type="text" placeholder="조회 후 자동 입력" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">대표자명</label>
+          <input class="form-control" id="ceo-name" type="text" placeholder="조회 후 자동 입력" readonly>
+        </div>
+      </div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">업종</label>
+          <select class="form-control" id="industry" aria-label="업종 선택">
+            <option value="">-- 선택 --</option>
+            <option value="제조업" selected>제조업</option>
+            <option value="건설업">건설업</option>
+            <option value="도소매업">도소매업</option>
+            <option value="서비스업">서비스업</option>
+            <option value="IT·소프트웨어">IT·소프트웨어</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">설립연도</label>
+          <input class="form-control" id="found-year" type="text" placeholder="예: 2010" value="">
+        </div>
+        <div class="form-group">
+          <label class="form-label">기업 구분</label>
+          <select class="form-control">
+            <option>중소기업</option>
+            <option>중견기업</option>
+            <option>대기업</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 심사역 배정 배너 -->
+    <div class="reviewer-banner" id="reviewer-banner" aria-live="polite" style="display:none">
+      <div class="rv-icon" aria-hidden="true">&#128100;</div>
+      <div>
+        <div class="rv-label">자동 배정된 담당 심사역</div>
+        <div class="rv-name">박민준 심사역</div>
+        <div class="rv-sub">여신심사1팀 &nbsp;·&nbsp; 제조업 전문 &nbsp;·&nbsp; 유사 사례 47건 보유</div>
+        <div class="rv-basis" id="rv-basis">배정 근거: —</div>
+      </div>
+      <div class="rv-tag">&#10003; 배정 완료</div>
+    </div>
+
+    <div class="s1-layout">
+      <!-- 좌: 여신 요청 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128176;</span>여신 요청 정보</div>
+        <div class="form-grid form-grid-2" style="margin-bottom:16px;">
+          <div class="form-group">
+            <label class="form-label">대출 유형<span class="required">*</span></label>
+            <select class="form-control" id="loan-type" aria-required="true">
+              <option value="">-- 선택 --</option>
+              <option>일반자금대출</option>
+              <option>운전자금대출</option>
+              <option>시설자금대출</option>
+              <option>기술금융대출</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">신청금액<span class="required">*</span></label>
+            <input class="form-control" type="text" id="loan-amount" value="" placeholder="금액을 입력하세요"
+              oninput="formatAmount(this)" aria-label="신청금액 원화">
+          </div>
+        </div>
+        <div class="form-grid form-grid-2" style="margin-bottom:16px;">
+          <div class="form-group">
+            <label class="form-label">대출 기간</label>
+            <select class="form-control" id="loan-term">
+              <option value="">-- 선택 --</option>
+              <option>12개월</option>
+              <option>24개월</option>
+              <option>36개월</option>
+              <option>48개월</option>
+              <option>60개월</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">담보 유형</label>
+            <select class="form-control" id="collateral-type">
+              <option value="">-- 선택 --</option>
+              <option>부동산 담보</option>
+              <option>신용</option>
+              <option>혼합(부동산+신용)</option>
+              <option>동산 담보</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">자금 용도</label>
+          <input class="form-control" id="loan-purpose" type="text" value="" placeholder="자금 용도를 입력하세요">
+        </div>
+      </div>
+
+      <!-- 우: 서류 업로드 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128196;</span>서류 업로드</div>
+        <div class="upload-zone" id="unified-upload-zone" role="button" tabindex="0"
+          aria-label="서류 업로드 영역"
+          onclick="document.getElementById('file-input-all').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="event.preventDefault();this.classList.remove('drag-over');handleUnifiedDrop(event)"
+          style="min-height:180px;">
+          <input type="file" id="file-input-all" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" multiple style="display:none"
+            onchange="handleUnifiedSelect(this.files)">
+          <div class="upload-icon">&#128206;</div>
+          <div class="upload-title">서류를 여기에 끌어다 놓거나 클릭하세요</div>
+          <div class="upload-sub">재무제표, 소득금액증명원, 부가세증명원, 사업자등록증 등</div>
+          <div class="upload-tag">PDF / Excel / 이미지 (여러 파일 가능)</div>
+          <div class="file-list" id="fl-all"></div>
+        </div>
+        <p style="font-size:11px;color:var(--text-lt);margin-top:8px;">&#128161; 업로드된 서류를 AI(OCR)가 분석하여 서류 종류를 자동 판별합니다.</p>
+        <div class="mt-16" style="text-align:right;">
+          <button class="btn btn-primary btn-lg" onclick="startAnalysis()" aria-label="AI 분석 시작">
+            &#127302; AI 분석 시작
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== SCREEN 2: AI 토론 분석 ======== -->
+  <section class="screen" id="screen-2" aria-label="AI 토론 분석">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div>
+        <h1 style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">AI 토론 분석 진행 중</h1>
+        <p class="text-muted text-sm">7명의 AI 에이전트가 토론하여 9개 심사 항목을 작성합니다. 잠시 기다려 주세요.</p>
+      </div>
+      <div class="info-pill">&#128337; 예상 소요 시간: 약 30초</div>
+    </div>
+
+    <div class="discussion-layout">
+      <!-- 에이전트 목록 -->
+      <div class="flex-col" style="gap:12px;overflow-y:auto;">
+        <div class="card" style="padding:10px 12px;margin-bottom:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-lt);text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px;">참여 에이전트</div>
+          <div class="agent-list" id="agent-list">
+            <div class="agent-card" id="ag-0" aria-label="의장 에이전트">
+              <div class="agent-avatar" style="background:#FFF0F2;">&#129332;</div>
+              <div>
+                <div class="agent-name">의장</div>
+                <div class="agent-role">Lead Agent</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-0">대기</div>
+            </div>
+            <div class="agent-card" id="ag-1" aria-label="수석 CPA 에이전트">
+              <div class="agent-avatar" style="background:#E8F5E9;">&#128200;</div>
+              <div>
+                <div class="agent-name">수석 CPA</div>
+                <div class="agent-role">Financial Analyst</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-1">대기</div>
+            </div>
+            <div class="agent-card" id="ag-2" aria-label="산업 애널리스트 에이전트">
+              <div class="agent-avatar" style="background:#FFF3E0;">&#127963;</div>
+              <div>
+                <div class="agent-name">산업 애널리스트</div>
+                <div class="agent-role">Industry Analyst</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-2">대기</div>
+            </div>
+            <div class="agent-card" id="ag-3" aria-label="평판 리스크 탐지관 에이전트">
+              <div class="agent-avatar" style="background:#FFEBEE;">&#128269;</div>
+              <div>
+                <div class="agent-name">평판 리스크 탐지관</div>
+                <div class="agent-role">Non-Financial Analyst</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-3">대기</div>
+            </div>
+            <div class="agent-card" id="ag-4" aria-label="본부 수석 심사역 에이전트">
+              <div class="agent-avatar" style="background:#E8F5E9;">&#129351;</div>
+              <div>
+                <div class="agent-name">본부 수석 심사역</div>
+                <div class="agent-role">Underwriter</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-4">대기</div>
+            </div>
+            <div class="agent-card" id="ag-5" aria-label="기업영업 RM 에이전트">
+              <div class="agent-avatar" style="background:#FFF0F2;">&#129333;</div>
+              <div>
+                <div class="agent-name">기업영업 RM</div>
+                <div class="agent-role">Relationship Manager</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-5">대기</div>
+            </div>
+            <div class="agent-card" id="ag-6" aria-label="여신심사 검증관 에이전트">
+              <div class="agent-avatar" style="background:#FFEBEE;">&#128270;</div>
+              <div>
+                <div class="agent-name">여신심사 검증관</div>
+                <div class="agent-role">Critic / Verifier</div>
+              </div>
+              <div class="agent-status status-wait" id="ag-status-6">대기</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 지적/보완 실시간 트래커 -->
+      <div class="critic-tracker" id="critic-tracker">
+        <div class="critic-tracker-title"><span class="ct-icon">⚡</span> 지적 · 보완 현황</div>
+        <div class="critic-tracker-empty" id="ct-empty">토론이 시작되면<br>지적 및 보완 내역이<br>실시간으로 표시됩니다</div>
+        <div class="critic-tracker-list" id="ct-list"></div>
+      </div>
+
+      <!-- 채팅 영역 -->
+      <div class="chat-area">
+        <div class="chat-header">
+          <div class="ch-title">AI 심사 토론</div>
+          <div class="round-badge" id="round-label">1 / 3 라운드</div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span id="progress-text">토론 준비 중...</span>
+            <span id="progress-pct">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="chat-messages" id="chat-messages" aria-live="polite" aria-atomic="false"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== SCREEN 3: 심사 항목 결과 ======== -->
+  <section class="screen" id="screen-3" aria-label="심사 항목 결과">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div>
+        <h1 style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">심사 항목 결과</h1>
+        <p class="text-muted text-sm">AI 생성 초안입니다. 각 항목을 검토하고 필요 시 직접 편집하세요.</p>
+      </div>
+      <div class="flex gap-8 items-center">
+        <div class="ai-draft-label" aria-label="AI 생성 초안 안내">&#129302; AI 생성 초안 — 검토 필요</div>
+        <button class="btn btn-secondary btn-sm" onclick="expandAll()">전체 펼치기</button>
+      </div>
+    </div>
+
+    <div class="review-layout">
+      <!-- 9개 항목 -->
+      <div class="items-list" id="items-list">
+        <!-- 동적 생성 -->
+      </div>
+
+      <!-- 사이드 패널 -->
+      <div class="side-panel">
+        <!-- 기업 요약 -->
+        <div class="summary-card">
+          <div class="summary-title">기업 개요</div>
+          <div class="summary-row">
+            <span class="summary-key">상호명</span>
+            <span class="summary-val" id="s3-company-name">한양정밀테크</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">대표자</span>
+            <span class="summary-val" id="s3-ceo">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">업종</span>
+            <span class="summary-val" id="s3-industry">금속 부품 제조</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">설립</span>
+            <span class="summary-val" id="s3-founded">2012년 (업력 13년)</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">신청금액</span>
+            <span class="summary-val" style="color:var(--primary);">15억 원</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">담당 심사역</span>
+            <span class="summary-val">박민준</span>
+          </div>
+        </div>
+
+        <!-- 항목 요약 현황 -->
+        <div class="summary-card">
+          <div class="summary-title">등급 현황</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:center;">
+            <div style="padding:10px;background:var(--grade-h-bg);border-radius:6px;">
+              <div style="font-size:22px;font-weight:700;color:var(--approve);" id="grade-h-count">4</div>
+              <div style="font-size:11px;color:var(--approve);font-weight:600;">상</div>
+            </div>
+            <div style="padding:10px;background:var(--grade-m-bg);border-radius:6px;">
+              <div style="font-size:22px;font-weight:700;color:var(--warning);" id="grade-m-count">3</div>
+              <div style="font-size:11px;color:var(--warning);font-weight:600;">중</div>
+            </div>
+            <div style="padding:10px;background:var(--grade-l-bg);border-radius:6px;">
+              <div style="font-size:22px;font-weight:700;color:var(--danger);" id="grade-l-count">2</div>
+              <div style="font-size:11px;color:var(--danger);font-weight:600;">하</div>
+            </div>
+          </div>
+          <hr class="section-divider">
+          <div class="summary-title">징구서류 현황</div>
+          <div class="summary-row">
+            <span class="summary-key">&#9989; 충족</span>
+            <span class="summary-val" id="doc-suf-count">5개 항목</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-key">&#9888;&#65039; 부족</span>
+            <span class="summary-val" style="color:var(--warning);" id="doc-insuf-count">2개 항목</span>
+          </div>
+        </div>
+
+        <!-- 징구서류 안내 -->
+        <div class="summary-card">
+          <div class="summary-title">&#128196; 징구서류 안내</div>
+          <div class="doc-list">
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">재무제표 (3개년)</span>
+              <span class="doc-status doc-status-ok">제출완료</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">소득금액증명원</span>
+              <span class="doc-status doc-status-ok">제출완료</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">부가세증명원</span>
+              <span class="doc-status doc-status-err">미제출</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">사업자등록증</span>
+              <span class="doc-status doc-status-err">미제출</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">담보물 감정평가서</span>
+              <span class="doc-status doc-status-err">미제출</span>
+            </div>
+            <div class="doc-item">
+              <span class="doc-icon">&#128196;</span>
+              <span class="doc-name">최근 6개월 매출자료</span>
+              <span class="doc-status doc-status-err">미제출</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="gotoStep(1)">&#8592; 서류 재등록</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" onclick="saveTemp()">&#128190; 임시 저장</button>
+      <button class="btn btn-secondary" onclick="openPreviewModal()">&#128464; 미리보기</button>
+      <button class="btn btn-danger btn-lg" onclick="openSubmitConfirm()">&#128228; 심사역 제출</button>
+    </div>
+  </section>
+
+  <!-- ======== SCREEN 4: 제출 완료 ======== -->
+  <section class="screen" id="screen-4" aria-label="제출 완료">
+    <div class="success-screen">
+      <div class="success-icon" aria-hidden="true">&#9989;</div>
+      <h1 class="success-title">심사 요청이 제출되었습니다</h1>
+      <p class="success-body">
+        심사역 박민준님께 여신심사 요청이 전달되었습니다.<br>
+        등급·데이터 라벨은 제거된 심사의견서 초안이 심사역에게 전달됩니다.<br>
+        처리 현황은 여신심사 포털에서 확인하실 수 있습니다.
+      </p>
+      <div class="success-ticket" role="region" aria-label="제출 접수증">
+        <div class="ticket-row">
+          <span class="ticket-key">접수번호</span>
+          <span class="ticket-val" style="color:var(--primary);">REQ-2026-06190047</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">기업명</span>
+          <span class="ticket-val">한양정밀테크</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">신청금액</span>
+          <span class="ticket-val">15억 원</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">담당 심사역</span>
+          <span class="ticket-val">박민준</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">제출 일시</span>
+          <span class="ticket-val">2026-06-19 14:37</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-key">심사 결론</span>
+          <span class="ticket-val" style="color:var(--warning);">조건부 승인 권고</span>
+        </div>
+      </div>
+      <div style="margin-top:28px;">
+        <button class="btn btn-primary" onclick="gotoStep(1); location.reload()">&#43; 새 심사 등록</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- 심사요청서 미리보기 -->
+<div class="modal-overlay" id="preview-modal" role="dialog" aria-modal="true" aria-label="심사요청서 미리보기">
+  <div class="modal" style="max-width:860px;">
+    <div class="modal-header">
+      <div class="modal-title">&#128464; 심사요청서 미리보기</div>
+      <button class="modal-close" onclick="closeModal('preview-modal')" aria-label="닫기">&#10005;</button>
+    </div>
+    <div class="modal-body" id="preview-body">
+      <!-- 동적 생성 -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('preview-modal')">닫기</button>
+      <button class="btn btn-primary">&#128196; PDF 출력</button>
+    </div>
+  </div>
+</div>
+
+<!-- 제출 확인 다이얼로그 -->
+<div class="modal-overlay" id="submit-confirm" role="dialog" aria-modal="true" aria-label="제출 확인">
+  <div class="modal confirm-modal">
+    <div class="modal-header">
+      <div class="modal-title">최종 제출 확인</div>
+      <button class="modal-close" onclick="closeModal('submit-confirm')" aria-label="닫기">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon" aria-hidden="true">&#128228;</div>
+      <div class="confirm-title">심사역에게 제출하시겠습니까?</div>
+      <div class="confirm-body">
+        박민준 심사역에게 한양정밀테크의<br>
+        여신심사 요청서를 제출합니다.
+      </div>
+      <div class="confirm-notice">
+        &#9888;&#65039; 제출 후에는 수정이 불가합니다.<br>
+        등급(상/중/하) 및 데이터 라벨은 제거된 상태로 전달됩니다.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('submit-confirm')">취소</button>
+      <button class="btn btn-danger" onclick="doSubmit()">&#128228; 최종 제출</button>
+    </div>
+  </div>
+</div>
+
+<!-- 보강 로딩 -->
+<div class="reinforce-overlay" id="reinforce-overlay" role="status" aria-live="polite" aria-label="데이터 보강 중">
+  <div class="reinforce-box">
+    <div class="reinforce-spinner"></div>
+    <div class="reinforce-title" id="reinforce-title">데이터 보강 중...</div>
+    <div class="reinforce-sub">외부 데이터 추적관이 자료를 검색합니다</div>
+    <div class="reinforce-steps">
+      <div class="reinforce-step" id="rs-1">&#128269; 외부 자료 검색 중</div>
+      <div class="reinforce-step" id="rs-2">&#128221; 보강 문구 생성 중</div>
+    </div>
+  </div>
+</div>
+
+<!-- 외부자료 모달 -->
+<div class="modal-overlay" id="ext-source-modal" role="dialog" aria-modal="true" aria-label="외부자료 근거">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 id="ext-source-title" style="margin:0;font-size:16px;">📄 외부자료 근거</h3>
+      <button class="modal-close" onclick="closeModal('ext-source-modal')" aria-label="닫기">&#10005;</button>
+    </div>
+    <div id="ext-source-body" style="padding:16px;max-height:400px;overflow-y:auto;"></div>
+    <div class="modal-footer" style="padding:12px 16px;text-align:right;border-top:1px solid #eee;">
+      <button class="btn btn-secondary" onclick="closeModal('ext-source-modal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 (상단 중앙) -->
+<div class="toast" id="toast" role="alert">
+  <span class="toast-icon" id="toast-icon">&#10003;</span>
+  <span id="toast-msg">저장되었습니다.</span>
+</div>
+
+<!-- 보강 불가 토스트 (우하단) -->
+<div class="toast-br" id="toast-br" role="alert">
+  <span id="toast-br-icon">ℹ️</span>
+  <span id="toast-br-msg"></span>
+</div>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const DEMO_COMPANIES = {
+  "1268164926": {
+    company_info: { company_name: "한양정밀테크", internal_credit_rating: "A", css_credit_rating: "AA", industry_code: "C29", dart_code: "00164742", region: "창원" },
+    income_certificate: { issue_date: "2025-03-10", taxable_salary: 15200000000, income_type: "Business" },
+    vat_tax_certificate: { issue_date: "2025-07-01", annual_revenue_1yr: 22000000000, business_period_months: 156 },
+    financial_statements: { fiscal_year: "2024", total_assets: 18000000000, total_liabilities: 8000000000, operating_income: 1750000000, finance_cost_interest: 500000000 },
+    sales_data: { annual_sales_by_year: { "2023": 15000000000, "2024": 18000000000, "2025": 22000000000 } },
+    collateral_auction_value: { collateral_appraisal_value: 8000000000, regional_auction_rate_1yr: 0.82, regional_auction_count_1yr: 47 }
+  },
+  "2345678901": {
+    company_info: { company_name: "동진반도체소재", internal_credit_rating: "BB+", css_credit_rating: "BBB", industry_code: "C26", dart_code: "00401731", region: "부산" },
+    income_certificate: { issue_date: "2025-03-15", taxable_salary: 28000000000, income_type: "Business" },
+    vat_tax_certificate: { issue_date: "2025-07-01", annual_revenue_1yr: 38000000000, business_period_months: 108 },
+    financial_statements: { fiscal_year: "2024", total_assets: 14000000000, total_liabilities: 10000000000, operating_income: 1800000000, finance_cost_interest: 1500000000 },
+    sales_data: { annual_sales_by_year: { "2023": 20000000000, "2024": 28000000000, "2025": 38000000000 } },
+    collateral_auction_value: { collateral_appraisal_value: 6000000000, regional_auction_rate_1yr: 0.78, regional_auction_count_1yr: 32 }
+  },
+  "3456789012": {
+    company_info: { company_name: "삼원건설개발", internal_credit_rating: "BB-", css_credit_rating: "BB", industry_code: "F41", dart_code: "00128884", region: "창원" },
+    income_certificate: { issue_date: "2025-03-20", taxable_salary: 18000000000, income_type: "Business" },
+    vat_tax_certificate: { issue_date: "2025-07-01", annual_revenue_1yr: 19000000000, business_period_months: 204 },
+    financial_statements: { fiscal_year: "2024", total_assets: 12000000000, total_liabilities: 9000000000, operating_income: 2000000000, finance_cost_interest: 2500000000 },
+    sales_data: { annual_sales_by_year: { "2023": 30000000000, "2024": 25000000000, "2025": 19000000000 } },
+    collateral_auction_value: { collateral_appraisal_value: 5000000000, regional_auction_rate_1yr: 0.65, regional_auction_count_1yr: 18 }
+  },
+  "4567890123": {
+    company_info: { company_name: "남해바이오팜", internal_credit_rating: "BBB", css_credit_rating: "BBB+", industry_code: "C21", dart_code: "00359273", region: "경남" },
+    income_certificate: { issue_date: "2025-03-25", taxable_salary: 14500000000, income_type: "Business" },
+    vat_tax_certificate: { issue_date: "2025-07-01", annual_revenue_1yr: 18500000000, business_period_months: 132 },
+    financial_statements: { fiscal_year: "2024", total_assets: 11800000000, total_liabilities: 7800000000, operating_income: 1280000000, finance_cost_interest: 800000000 },
+    sales_data: { annual_sales_by_year: { "2023": 12000000000, "2024": 15000000000, "2025": 18500000000 } },
+    collateral_auction_value: { collateral_appraisal_value: 4500000000, regional_auction_rate_1yr: 0.77, regional_auction_count_1yr: 28 }
+  }
+};
+
+const INDUSTRY_MAP = {
+  'C29': { label: '제조업', detail: '제조업 (기계·부품)' },
+  'C26': { label: '제조업', detail: '제조업 (전자·반도체)' },
+  'C21': { label: '제조업', detail: '제조업 (의약·바이오)' },
+  'C28': { label: '제조업', detail: '제조업' },
+  'F41': { label: '건설업', detail: '건설업' },
+  'G47': { label: '도소매업', detail: '도소매업' },
+  'J62': { label: 'IT·소프트웨어', detail: 'IT·소프트웨어' }
+};
+
+let ITEMS_DATA = [
+  {
+    id: 1, name: "업체현황", grade: "상", doc_status: "충족", show_doc_badge: true,
+    opinion: `한양정밀테크는 2012년 설립된 금속 부품 제조 전문 기업으로, 자동차 부품 OEM 공급을 주력으로 합니다.<br><br><strong>매출액 추이 (최근 3개년)</strong><table class="op-table"><thead><tr><th>연도</th><th>매출액</th><th>영업이익률</th><th>전년 대비</th></tr></thead><tbody><tr><td>2023</td><td>150억 원</td><td>6.8%</td><td>—</td></tr><tr><td>2024</td><td>180억 원</td><td>7.3%</td><td>+20.0%</td></tr><tr><td>2025</td><td>220억 원</td><td>7.9%</td><td>+22.2%</td></tr></tbody></table><br>부채비율 80%는 동종업종 평균(167%) 대비 매우 양호한 수준이며, CAGR 21.1% 성장세와 영업이익률 7.9%는 업종 평균(5.3%) 대비 우위를 나타냅니다.`,
+    hint: "부채비율이나 CAGR 수치를 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "재무제표_2024.pdf", quote: "당기 매출액 180억 원 (전년 대비 20.0% 증가)", loc: "p.3 손익계산서" },
+      { doc: "사업자등록증.pdf", quote: "업종: 자동차 부품 제조업 / 설립: 2012", loc: "p.1" },
+      { doc: "과거심사사례_RAG", quote: "유사 업종 승인 사례: 부채비율 140~160% 범위에서 승인율 78%", loc: "심사DB" }
+    ],
+    reinforcedPersuasion: `한양정밀테크는 2012년 설립된 금속 부품 제조 전문 기업입니다.<br><br><strong>매출액 추이 (최근 3개년)</strong><table class="op-table"><thead><tr><th>연도</th><th>매출액</th><th>영업이익률</th><th>전년 대비</th></tr></thead><tbody><tr><td>2023</td><td>150억 원</td><td>6.8%</td><td>—</td></tr><tr><td>2024</td><td>180억 원</td><td>7.3%</td><td>+20.0%</td></tr><tr><td>2025</td><td>220억 원</td><td>7.9%</td><td>+22.2%</td></tr></tbody></table><br>부채비율 80%(동종 평균 167% 대비 87%p 양호), CAGR 21.1%, 영업이익률 7.9%(업종 평균 5.3% 대비 +2.6%p). <strong>[외부자료 보강]</strong> 금속 부품 업종 평균 성장률(KIET 2024): 8.3% — 당사 성장률이 업종의 2.5배 수준으로 경쟁우위 확인.`,
+    reinforcedDocuments: null
+  },
+  {
+    id: 2, name: "자금용도", grade: null, doc_status: null, show_doc_badge: false,
+    opinion: "",
+    hint: "자금용도, 집행계획, 수주 또는 계약 내용을 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "자금계획서.pdf", quote: "CNC 머시닝센터 2대 도입: 단가 4.5억/대, 납기 2025년 8월", loc: "p.2" },
+      { doc: "수주확인서_현대모비스.pdf", quote: "2025년 공급 계약금액 32억 4,000만 원 확정", loc: "p.1" }
+    ],
+    reinforcedPersuasion: `신청 자금 15억 원은 제2공장 CNC 가공 라인 증설(10억) 및 원자재 구매 운전자금(5억)으로 구성됩니다. 수주 잔고 32억 원(현대모비스 2025년 확정 계약) 대비 시설 투자 필요성이 명확합니다. 자금 집행 계획서상 3개월 이내 장비 납품·가동 예정으로 자금 회수 경로가 구체적입니다.<br><br><strong>[외부자료 보강]</strong> 동종 업계 시설 투자 대비 수주확인서 요건: 자금 대비 120% 이상 확정 수주 보유 시 적정 — 당사 32억/15억 = 213%로 기준 초과 충족.`,
+    reinforcedDocuments: null
+  },
+  {
+    id: 3, name: "금리결정 적정성", grade: "중", doc_status: "충족", show_doc_badge: true,
+    opinion: "제안 금리 5.2%(변동, 3M KORIBOR +2.1%)는 차주의 신용등급 BB+(NICE 기준) 및 담보(LTV 72%) 조건을 반영한 수준입니다. 동종 업종 유사 규모 최근 6개월 승인 사례(평균 5.0~5.6%) 범위 내에 위치하나, DSCR 1.18배로 기준 1.25 미달 상태입니다. 금리 인상 시 상환 부담이 가중될 수 있어 변동금리 선택 리스크에 대한 추가 검토가 필요합니다.",
+    hint: "DSCR 또는 신용등급 수치를 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "신용평가서_NICE.pdf", quote: "기업 신용등급 BB+, 평가일 2025.04.30", loc: "p.1" },
+      { doc: "재무제표_2024.pdf", quote: "이자보상배율 2.3배, 영업현금흐름 8.7억", loc: "p.5" }
+    ],
+    reinforcedPersuasion: `제안 금리 5.2%(변동, 3M KORIBOR +2.1%)는 신용등급 BB+, LTV 72% 조건을 반영합니다. DSCR 현재 1.18배(기준 1.25 미달)이나, 2025년 확정 수주 반영 시 1.31배로 기준 충족 가능합니다. <strong>[외부자료 보강]</strong> 당행 최근 6개월 동종 업종 BB+ 등급 승인 평균 금리: 5.05~5.45% — 제안 금리 5.2%는 시장 범위 내 적정 수준. 금리 인상 헤지를 위해 고정금리 전환 옵션 조건 부여를 권고합니다.`,
+    reinforcedDocuments: `<strong>[징구서류 보강]</strong> 금리 적정성 검증을 위해 추가 징구 권고: ① 최근 분기 신용평가서 갱신본 (현 평가일 2025.04.30 — 6개월 경과 시 갱신 필요) ② 감정평가서 (담보 LTV 72% 추정치 → 확정치 전환용).`
+  },
+  {
+    id: 4, name: "상환재원", grade: "하", doc_status: "부족", show_doc_badge: true,
+    opinion: "연간 영업현금흐름(2024년 기준) 8.7억 원 대비 연간 원리금 상환액 추정치 6.8억 원으로 DSCR 1.18배가 산출됩니다. 이는 당행 여신심사 기준 최소 DSCR 1.25배에 미달하여 상환재원의 적정성이 부족합니다. 단, 현대모비스 추가 수주에 따른 2025년 매출 증가(예상 145억) 반영 시 DSCR 1.31배로 개선 가능합니다.",
+    hint: "DSCR, 이자보상배율 또는 영업현금흐름 수치를 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "재무제표_2024.pdf", quote: "영업활동현금흐름 8억 7,240만 원", loc: "p.7 현금흐름표" }
+    ],
+    reinforcedPersuasion: `연간 영업현금흐름 8.7억 원 / 원리금 상환 추정 6.8억 원 → DSCR 1.18배(기준 1.25 미달). <strong>[외부자료 보강]</strong> 현대모비스 2025 공급계약(32.4억) 기반 매출 예상 145억 반영 시: 영업이익률 7.2% 적용 → 추가 현금흐름 약 1.6억 가산 → DSCR 1.37배로 기준 초과. 대출기간 36개월→48개월 연장 시 연간 상환액 5.3억 → DSCR 현 시점 기준 1.64배로 즉시 기준 충족.<br><br>이자보상배율 현황: 2.3배(업종 기준 1.5배 초과). 영업현금흐름 대비 이자비용 커버리지 충분하여 단기 유동성 위험 낮음.`,
+    reinforcedDocuments: `<strong>[징구서류 부족 → 추가 징구 권고]</strong> ① 최근 6개월 매출자료 (2025년 1~6월 세금계산서 합계표) — DSCR 재산출을 위한 핵심 서류 ② 2025년 수주확인서 갱신본 (현대모비스 추가 공급 물량 확정분) ③ 감정평가서 — 담보물 LTV 확정을 통한 담보 커버리지 재산출.`
+  },
+  {
+    id: 5, name: "특이사항", grade: "상", doc_status: "충족", show_doc_badge: true,
+    opinion: "경영진 금융 연체 이력 없음. 최근 5년간 소송·체납 내역 미확인. 법인세 정상 납부 확인(국세청 납세증명서). 2024년 6월 고용노동부 안전관리 우수기업 인증 획득. 주요 매체 부정 보도 없음. 동종업종 ESG 규제(탄소중립 로드맵) 대응 현황은 기술금융 항목에서 별도 검토함.",
+    hint: "연체, 소송, 법인세 관련 내용을 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "납세증명서_2025.pdf", quote: "체납국세 없음 확인, 발급일 2025.05.02", loc: "p.1" },
+      { doc: "법원등기부등본.pdf", quote: "소송 기재사항 없음", loc: "p.3" }
+    ],
+    reinforcedPersuasion: null,
+    reinforcedDocuments: null
+  },
+  {
+    id: 6, name: "기술금융 & ESG", grade: "중", doc_status: "부족", show_doc_badge: true,
+    opinion: "자체 CNC 자동화 설비 보유 및 ISO 9001 품질 인증(2023년 갱신)을 통해 기술력은 확인됩니다. 기업부설 연구소 미보유로 기술금융 T등급 산정의 기술력 가점 적용이 제한됩니다. ESG 측면에서 에너지 절감 설비 투자(태양광 패널 350kW)가 예정되어 있으나 실행 계획서만 제출되어 확정이 아닙니다. TCF(기술신용평가) 추가 의뢰를 통해 기술등급 상향 가능성을 검토할 것을 권고합니다.",
+    hint: "TCF, ISO 등급 또는 ESG 수치를 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "기술신용평가_결과.pdf", quote: "T4등급, 평가일 2025.03.15, TCB 한국기업데이터", loc: "p.2" }
+    ],
+    reinforcedPersuasion: `자체 CNC 자동화 설비 및 ISO 9001 인증(2023 갱신)으로 기술력 확인. 현 기술등급 T4. <strong>[외부자료 보강]</strong> 동종 업종 TCF 재평가 사례(TCB 한국기업데이터 2024): T4 → T3 상향 성공률 약 68% — 부설연구소 없어도 자동화 설비 투자 실적 및 ISO 인증 보유 시 가점 부여 가능. T3 달성 시 기술금융 금리 우대(-0.3%p) 적용 가능, 유효 금리 4.9% 수준으로 차주 부담 경감.`,
+    reinforcedDocuments: `<strong>[징구서류 부족 → 추가 징구 권고]</strong> ① TCF 기관 재의뢰 결과서 (T3 이상 목표) ② 태양광 패널 설치 공사 계약서 또는 발주서 (ESG 확정 근거) ③ CNC 설비 납품 계약서 (기술 투자 실적 증빙).`
+  },
+  {
+    id: 7, name: "종합의견", grade: "중", doc_status: "충족", show_doc_badge: true,
+    opinion: "업체현황 및 자금용도는 양호하나 DSCR 기준 미달(1.18배, 기준 1.25배)이 핵심 리스크입니다. 최근 6개월 매출자료 미제출로 현재 상환능력의 정확한 검증에 한계가 있습니다. 조건부 승인(최근 매출자료 제출, 감정평가서 보완, DSCR 재산출 후 기준 충족 확인)을 전제로 여신 실행이 가능한 것으로 지원됩니다. 담보 안전성(LTV 72%)을 감안하면 전반적 리스크는 관리 가능 수준입니다.",
+    hint: "DSCR, 담보 또는 LTV 수치를 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "과거심사사례_RAG", quote: "박민준 심사역 유사 승인 사례 12건 중 DSCR 1.15~1.25 범위 조건부 승인 8건", loc: "심사DB" }
+    ],
+    reinforcedPersuasion: `업체현황 및 자금용도 양호. DSCR 1.18배(기준 1.25 미달)가 핵심 리스크이나, 2025년 확정 수주 반영 시 1.31배로 기준 충족 가능. <strong>[외부자료 보강]</strong> 박민준 심사역 과거 유사 조건부 승인 8건 분석: DSCR 1.15~1.25 범위, 6개월 이내 매출자료 보완 조건 이행률 92%. 이행률이 높아 조건부 승인 리스크 관리 가능. 조건: ① 6개월 매출자료 제출 ② DSCR 재산출 ③ 감정평가서 제출.`,
+    reinforcedDocuments: null
+  },
+  {
+    id: 8, name: "미이행 승인조건", grade: "중", doc_status: "부족", show_doc_badge: true,
+    opinion: "신규 거래 기업으로 당행 여신 이력 없음 — 미이행 승인조건 이력 검증 불가합니다. 이번 심사에서 도출된 조건 이행 계획이 명확히 설정되어야 합니다. 타행 여신 이행 이력 확인을 위한 신용정보원 조회 결과 징구를 권고합니다.",
+    hint: "승인조건, 이행 또는 신용정보원 내용을 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "신용조회서_신용정보원.pdf", quote: "조회 결과 미제출 — 데이터 부족", loc: "미제출" }
+    ],
+    reinforcedPersuasion: `신규 거래로 당행 이행 이력 없음. <strong>[외부자료 보강]</strong> 신용정보원 기업신용조회 결과(공통): 금융기관 여신 이력 정상 — 연체·부도 이력 없음 확인. 타행 여신 한도 및 잔액 적정 수준. 이에 승인 시 이행조건: ① 6개월 매출자료 제출 ② 감정평가서 제출 ③ 분기별 재무 현황 보고.`,
+    reinforcedDocuments: `<strong>[징구서류 부족 → 추가 징구 권고]</strong> ① 신용정보원 기업신용조회서 (최신 발급본) ② 타행 여신 잔액 확인서 (주거래 은행 발급) ③ 대표자 개인신용조회서.`
+  },
+  {
+    id: 9, name: "영업점장 특별의견", grade: null, doc_status: null, show_doc_badge: false,
+    opinion: "",
+    hint: "현장방문, 가동률, 사업의지 또는 경영진 내용을 넣으면 설득력이 높아집니다.",
+    evidence: [
+      { doc: "현장방문 보고서.pdf", quote: "방문일 2025.06.10, 공장 가동률 82% 육안 확인", loc: "p.1" }
+    ],
+    reinforcedPersuasion: `대표는 지역 제조업 협회 부회장으로 지역 네트워크가 탄탄합니다. 거래 개시 후 3개월간 정기 방문을 통해 수주 현황 및 공장 가동률(82%)이 서류와 일치함을 현장에서 직접 확인하였습니다. 대표의 사업 의지와 경영 역량이 우수하며, 최신 설비 도입 계획이 구체적으로 진행 중임을 현장에서 확인하였습니다. 지점장 책임하에 적극 지원을 권고합니다.`,
+    reinforcedDocuments: null
+  }
+];
+
+// 힌트는 항목 순서대로 고정 보존 (백엔드 응답으로 ITEMS_DATA 교체 후에도 유지)
+const ITEMS_HINTS = ITEMS_DATA.map(it => it.hint || '');
+
+const ITEM_KEYWORDS = {
+  1: ['부채비율', '매출', '영업이익', '성장', 'CAGR', '업종평균', '거래처', 'OEM'],
+  2: ['자금용도', '집행계획', '수주', '계약', '운전자금', '시설', '대출'],
+  3: ['DSCR', 'KORIBOR', '신용등급', 'LTV', '금리', '이자보상배율'],
+  4: ['DSCR', '이자보상배율', '영업현금흐름', '상환', '원리금', '매출자료'],
+  5: ['연체', '소송', '체납', '법인세', '평판', '인증', '납세'],
+  6: ['TCF', 'ISO', 'T등급', 'ESG', '기술', '신용평가', '연구소'],
+  7: ['DSCR', '조건부', '담보', 'LTV', '승인', '종합', '매출자료'],
+  8: ['승인조건', '이행', '신용정보원', '기한', '조건', '이력'],
+  9: ['현장', '방문', '가동률', '사업의지', '경영', '지점장', '대표']
+};
+
+const AGENTS = [
+  { name: "의장", role: "Lead Agent", emoji: "⚖️", color: "#FFF0F2" },
+  { name: "수석 CPA", role: "Financial Analyst", emoji: "📊", color: "#E8F5E9" },
+  { name: "산업 애널리스트", role: "Industry Analyst", emoji: "🏗️", color: "#FFF3E0" },
+  { name: "평판 리스크 탐지관", role: "Non-Financial Analyst", emoji: "🔍", color: "#FFEBEE" },
+  { name: "본부 수석 심사역", role: "Underwriter", emoji: "🥇", color: "#E8F5E9" },
+  { name: "기업영업 RM", role: "RM", emoji: "🤝", color: "#FFF0F2" },
+  { name: "여신심사 검증관", role: "Critic", emoji: "🔎", color: "#FFEBEE" }
+];
+
+const DISCUSSION_MESSAGES = [
+  { agentIdx: 0, cls: "chairman", text: "안녕하십니까. 한양정밀테크의 여신심사를 시작합니다. 서류 일체와 RAG 컨텍스트를 배포하였습니다. 각 에이전트는 담당 항목 분석을 시작해 주십시오." },
+  { agentIdx: 1, cls: "", text: "재무제표 분석 결과를 보고합니다. 최근 3개년 매출 CAGR 19.8%, 영업이익률 7.2%로 양호합니다. 다만 DSCR이 1.18배로 기준치 1.25배에 미달합니다. 상환재원 항목을 '하' 등급으로 제안합니다." },
+  { agentIdx: 2, cls: "", text: "자동차 부품 제조업종은 현재 전기차 전환 과도기 리스크가 있으나, OEM 2차 벤더 확정 수주는 업종 전환 리스크를 일정 부분 상쇄합니다. 자금용도 타당성은 '상' 등급으로 제안합니다." },
+  { agentIdx: 3, cls: "", text: "경영진 이력 및 법적 이슈를 점검하였습니다. 연체·소송·체납 없음 확인. 단, 신용정보원 타행 이력 자료가 미제출 상태입니다. 미이행 승인조건 항목에 '데이터 누락' 라벨을 부여합니다." },
+  { agentIdx: 4, cls: "", text: "규정 검토 결과 DSCR 기준 미달이 핵심 쟁점입니다. 조건부 승인 조건으로 최근 6개월 매출자료 추가 제출 및 DSCR 재산출을 의무화할 것을 제안합니다." },
+  { agentIdx: 6, cls: "critic", text: "⚠️ 이의 있습니다. 수석 CPA의 DSCR 산출 근거에서 2025년 예상 수주를 반영하였으나, 확정 계약서 없이 추정치를 기입한 것은 규정 위반입니다. 해당 항목 재조사를 요청합니다." },
+  { agentIdx: 1, cls: "", text: "재조사 결과 보고합니다. 현대모비스 수주확인서(32.4억) 확인으로 2025년 매출 예상치는 계약 기반 수치로 수정합니다. DSCR 현재 1.18 / 수주 반영 시 1.31로 개선됩니다. 조건부 승인 조건 부여 시 리스크 관리 가능 수준입니다." },
+  { agentIdx: 5, cls: "", text: "현장 방문 결과를 추가합니다. 공장 가동률 82%, 대표 사업 의지 우수, 수주 서류 현장 확인 완료. 지점장 책임하 지원을 권고드립니다." },
+  { agentIdx: 0, cls: "chairman", text: "검증관의 지적 사항이 해소되었습니다. 1라운드 토론을 종료하고 9개 항목 초안을 합성합니다. 최종 권고: 조건부 승인 (DSCR 재산출, 매출자료·감정평가서 보완)." }
+];
+
+// ── API 설정 ────────────────────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:8000';
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let currentStep = 1;
+let discussionStarted = false;
+let discussionComplete = false;
+let currentCompany = null;
+
+// ── NAVIGATION ──────────────────────────────────────────────────────────────
+function gotoStep(n) {
+  if (n > 2 && !discussionComplete) {
+    if (n === 1) { _gotoStep(1); return; }
+    showToast("AI 분석이 완료된 후 이동 가능합니다.", "⚠️");
+    return;
+  }
+  _gotoStep(n);
+}
+
+function _gotoStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + n).classList.add('active');
+
+  document.querySelectorAll('.step-item').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    const idx = i + 1; // each step-item maps to step idx (skip arrows)
+  });
+
+  // step items: indices 0,1,2,3,4 = steps 1-5 (arrows are separate elements)
+  const stepItems = document.querySelectorAll('.step-item');
+  stepItems.forEach((el, i) => {
+    const stepNum = i + 1;
+    if (stepNum < n) el.classList.add('done');
+    else if (stepNum === n) el.classList.add('active');
+  });
+}
+
+// ── SCREEN 1 ──────────────────────────────────────────────────────────────────
+function formatBizNum(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 10);
+  if (v.length > 5) v = v.slice(0,3) + '-' + v.slice(3,5) + '-' + v.slice(5);
+  else if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
+  el.value = v;
+}
+
+const REVIEWER_POOL = [
+  { name: '박민준', team: '여신심사1팀', region: '창원', industries: ['C29','C28','C25'], tiers: ['우량','일반'], spec: '제조업(기계·부품)', cases: 47 },
+  { name: '김하늘', team: '여신심사2팀', region: '부산', industries: ['C26','C27','C22'], tiers: ['우량','일반'], spec: '반도체·전자', cases: 33 },
+  { name: '이준호', team: '여신심사3팀', region: '창원', industries: ['F41','F42','F43'], tiers: ['일반','주의'], spec: '건설업', cases: 28 },
+  { name: '최선미', team: '여신심사1팀', region: '경남', industries: ['C21','C20','C19'], tiers: ['우량','일반'], spec: '바이오·화학', cases: 19 },
+  { name: '강동현', team: '여신심사2팀', region: '부산', industries: ['G47','G45','G46'], tiers: ['일반','주의'], spec: '도소매·유통', cases: 35 },
+  { name: '윤지은', team: '여신심사3팀', region: '경남', industries: ['J62','J63','M72'], tiers: ['우량','일반'], spec: 'IT·서비스', cases: 22 },
+];
+
+function getCreditTier(cssRating) {
+  if (!cssRating) return '일반';
+  const r = cssRating.toUpperCase();
+  if (r === 'AAA' || r.startsWith('AA')) return '우량';
+  if (r.startsWith('A') || r.startsWith('BBB')) return '일반';
+  return '주의';
+}
+
+function assignReviewer(companyData) {
+  const info = companyData.company_info || {};
+  const industry = info.industry_code || '';
+  const tier = getCreditTier(info.css_credit_rating);
+  const region = info.region || '창원';
+
+  let best = REVIEWER_POOL[0], bestScore = -1;
+  for (const r of REVIEWER_POOL) {
+    let score = 0;
+    if (r.industries.includes(industry)) score += 3;
+    else if (r.industries.some(i => i[0] === industry[0])) score += 1;
+    if (r.tiers.includes(tier)) score += 2;
+    if (r.region === region) score += 1;
+    if (score > bestScore) { bestScore = score; best = r; }
+  }
+  const industryLabel = INDUSTRY_MAP[industry]?.detail || industry || '제조업';
+  return {
+    ...best,
+    assignBasis: `신용등급 ${info.css_credit_rating || 'N/A'}(${tier}) · ${industryLabel} · ${region}`
+  };
+}
+
+function updateReviewerBanner(reviewer) {
+  document.querySelector('.rv-name').textContent = reviewer.name + ' 심사역';
+  document.querySelector('.rv-sub').textContent = reviewer.team + ' \u00A0·\u00A0 ' + reviewer.spec + ' \u00A0·\u00A0 유사 사례 ' + reviewer.cases + '건 보유';
+  const basisEl = document.getElementById('rv-basis');
+  if (basisEl) basisEl.textContent = '배정 근거: ' + (reviewer.assignBasis || '—');
+  document.getElementById('s3-company-name').textContent = currentCompany?.company_info?.company_name || '회사명';
+  document.querySelectorAll('[class*="rv-name"], [class*="summary-val"]').forEach(el => {
+    if (el.textContent === '박민준') el.textContent = reviewer.name;
+  });
+}
+
+function lookupCompany() {
+  const v = document.getElementById('biz-num').value;
+  const digits = v.replace(/\D/g, '');
+  if (digits.length < 10) return;
+
+  const data = DEMO_COMPANIES[digits];
+  if (!data) {
+    document.getElementById('company-name').value = '';
+    document.getElementById('ceo-name').value = '';
+    document.getElementById('found-year').value = '';
+    document.getElementById('reviewer-banner').style.display = 'none';
+    showToast("등록되지 않은 사업자번호입니다.", "⚠️");
+    currentCompany = null;
+    return;
+  }
+
+  currentCompany = { biz_num: digits, ...data };
+  const info = data.company_info;
+  const months = data.vat_tax_certificate.business_period_months;
+  const foundYear = 2025 - Math.round(months / 12);
+  const industryEntry = INDUSTRY_MAP[info.industry_code] || { label: '제조업', detail: '제조업' };
+  const reviewer = assignReviewer(data);
+
+  document.getElementById('company-name').value = info.company_name;
+  document.getElementById('ceo-name').value = '';
+  document.getElementById('found-year').value = String(foundYear);
+  document.getElementById('industry').value = industryEntry.label;
+  updateReviewerBanner(reviewer);
+  document.getElementById('reviewer-banner').style.display = '';
+  showToast("사업자 정보 조회 완료 — " + reviewer.name + " 심사역 배정", "✓");
+}
+
+function formatAmount(el) {
+  let raw = el.value.replace(/[^\d]/g, '');
+  if (!raw) { el.value = ''; return; }
+  el.value = parseInt(raw, 10).toLocaleString('ko-KR');
+}
+
+let uploadedCount = 0;
+const uploadedFiles = [];
+
+function handleUnifiedSelect(files) {
+  if (!files || files.length === 0) return;
+  for (let i = 0; i < files.length; i++) {
+    addUploadedFile(files[i]);
+  }
+}
+
+function handleUnifiedDrop(event) {
+  const files = event.dataTransfer.files;
+  handleUnifiedSelect(files);
+}
+
+function addUploadedFile(file) {
+  uploadedFiles.push(file);
+  uploadedCount = uploadedFiles.length;
+  const zone = document.getElementById('unified-upload-zone');
+  zone.style.borderColor = 'var(--approve)';
+  zone.style.background = '#F1F8F1';
+  renderUploadedFiles();
+}
+
+function removeUploadedFile(idx) {
+  uploadedFiles.splice(idx, 1);
+  uploadedCount = uploadedFiles.length;
+  const zone = document.getElementById('unified-upload-zone');
+  if (uploadedFiles.length === 0) {
+    zone.style.borderColor = '';
+    zone.style.background = '';
+  }
+  renderUploadedFiles();
+}
+
+function renderUploadedFiles() {
+  const fl = document.getElementById('fl-all');
+  if (uploadedFiles.length === 0) {
+    fl.innerHTML = '';
+    return;
+  }
+  fl.innerHTML = uploadedFiles.map((file, i) => {
+    const size = (file.size / 1024 / 1024).toFixed(1) + ' MB';
+    return `<div class="file-item" style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+      <span class="file-icon">📄</span>
+      <span class="file-name" style="flex:1;">${file.name}</span>
+      <span class="file-size" style="color:var(--text-lt);font-size:11px;">${size}</span>
+      <span style="color:var(--approve);font-size:11px;">✓ OCR 대기</span>
+      <button onclick="event.stopPropagation();removeUploadedFile(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;" title="삭제">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function startAnalysis() {
+  if (uploadedCount < 1) {
+    showToast("서류를 하나 이상 업로드해 주세요.", "⚠️");
+    return;
+  }
+  _gotoStep(2);
+  if (!discussionStarted) {
+    discussionStarted = true;
+    runDiscussion();
+  }
+}
+
+// ── SCREEN 2: DISCUSSION — 백엔드 SSE 실제 호출 ──────────────────────────────
+async function runDiscussion() {
+  const chatEl = document.getElementById('chat-messages');
+  const fillEl = document.getElementById('progress-fill');
+  const pctEl  = document.getElementById('progress-pct');
+  const txtEl  = document.getElementById('progress-text');
+
+  function setAgentStatus(agentIdx, status) {
+    const card = document.getElementById('ag-' + agentIdx);
+    const statusEl = document.getElementById('ag-status-' + agentIdx);
+    if (!card || !statusEl) return;
+    card.classList.remove('speaking', 'done');
+    statusEl.classList.remove('status-speaking', 'status-done', 'status-wait');
+    if (status === 'speaking') {
+      card.classList.add('speaking');
+      statusEl.classList.add('status-speaking');
+      statusEl.textContent = '발언 중';
+    } else if (status === 'done') {
+      card.classList.add('done');
+      statusEl.classList.add('status-done');
+      statusEl.textContent = '완료';
+    } else {
+      statusEl.classList.add('status-wait');
+      statusEl.textContent = '대기';
+    }
+  }
+
+  let typingCounter = 0;
+
+  function addTyping(agentIdx) {
+    const ag = AGENTS[agentIdx];
+    if (!ag) return null;
+    typingCounter++;
+    const wrap = document.createElement('div');
+    wrap.className = 'bubble-wrap';
+    wrap.dataset.agentIdx = agentIdx;
+    wrap.id = 'typing-' + agentIdx + '-' + typingCounter;
+    wrap.innerHTML = `
+      <div class="bubble-avatar" style="background:${ag.color};">${ag.emoji}</div>
+      <div class="bubble-body">
+        <div class="bubble-meta">${ag.name} <span>${ag.role}</span></div>
+        <div class="bubble"><div class="bubble-typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+      </div>`;
+    chatEl.appendChild(wrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return wrap;
+  }
+
+  function formatMsg(text) {
+    // HTML 태그(table, tr, td, th, p, strong, br 등)는 보존하고 나머지만 처리
+    // 1) HTML 태그를 임시 플레이스홀더로 치환
+    const tags = [];
+    let safe = text.replace(/<\/?(?:table|thead|tbody|tfoot|colgroup|col|caption|tr|td|th|p|strong|em|b|i|u|br|hr|div|span|ul|ol|li|h[1-6]|sub|sup|a|pre|code)[^>]*>/gi, function(m) {
+      tags.push(m);
+      return '\x00TAG' + (tags.length - 1) + '\x00';
+    });
+    // 2) 나머지 < > 이스케이프
+    safe = safe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // 3) 마크다운 서식
+    safe = safe
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n([·•▪\-])\s/g, '<br>$1 ')
+      .replace(/\n(\d+\.)\s/g, '<br>$1 ')
+      .replace(/\n/g, '<br>');
+    // 4) 태그 복원
+    safe = safe.replace(/\x00TAG(\d+)\x00/g, function(_, i) { return tags[parseInt(i)]; });
+    return safe;
+  }
+
+  function replaceTyping(typingEl, agentIdx, text) {
+    const ag = AGENTS[agentIdx];
+    if (!ag || !typingEl) return;
+    const isCritic = agentIdx === 6;
+    const isChair  = agentIdx === 0;
+    const cls = isCritic ? 'critic' : isChair ? 'chairman' : '';
+    typingEl.innerHTML = `
+      <div class="bubble-avatar" style="background:${ag.color};">${ag.emoji}</div>
+      <div class="bubble-body">
+        <div class="bubble-meta">${ag.name} <span style="color:var(--text-lt);">${ag.role}</span></div>
+        <div class="bubble ${cls}">${formatMsg(text)}</div>
+      </div>`;
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    // 직전 발언자 추적 (검증관·의장 제외)
+    if (agentIdx !== 6 && agentIdx !== 0) {
+      lastSpeakingAgentIdx = agentIdx;
+    }
+
+    // 검증관 지적 시각화
+    if (agentIdx === 6) {
+      if (text.includes('이의 없음') || text.includes('합의 충분') || text.includes('합의 수렴')) {
+        resolveAllCriticisms();
+      } else {
+        const criticisms = parseCriticisms(text);
+        if (criticisms.length) showCriticisms(criticisms);
+      }
+    }
+    // 의장이 합의 수렴 선언하면 전체 해소
+    if (agentIdx === 0 && (text.includes('합의 수렴') || text.includes('지적 사항 해소') || text.includes('항목 합성'))) {
+      resolveAllCriticisms();
+    }
+    // 재조사로 발언하는 에이전트는 지적 해소 (발언 내용을 보완 텍스트로 전달)
+    if (agentIdx !== 6 && agentIdx !== 0) {
+      resolveCriticism(agentIdx, text);
+    }
+  }
+
+  // ── 검증관 지적 시각화 함수 ────────────────────────────────────────────────
+  const AGENT_NAME_TO_IDX = {
+    '수석 CPA': 1, 'CPA': 1, '산업 애널리스트': 2, '평판 리스크 탐지관': 3,
+    '본부 수석 심사역': 4, '기업영업 RM': 5,
+  };
+
+  let lastSpeakingAgentIdx = -1; // 직전 발언자 추적
+
+  function parseCriticisms(text) {
+    const results = [];
+    for (const [name, idx] of Object.entries(AGENT_NAME_TO_IDX)) {
+      if (!text.includes(name)) continue;
+      const pos = text.indexOf(name);
+      const raw = text.slice(pos + name.length).replace(/^[\s:·\-–—의]+/, '');
+      const snippet = raw.slice(0, 60).replace(/<[^>]+>/g, '').trim();
+      results.push({ name: AGENTS[idx]?.name || name, idx, snippet: snippet + (raw.length > 60 ? '…' : '') });
+    }
+    // fallback: 이름을 못 찾으면 직전 발언자를 지적 대상으로
+    if (results.length === 0 && lastSpeakingAgentIdx > 0 && lastSpeakingAgentIdx !== 6) {
+      const ag = AGENTS[lastSpeakingAgentIdx];
+      const snippet = text.replace(/^[\s⚠️이의:·\-]+/, '').slice(0, 60).replace(/<[^>]+>/g, '').trim();
+      results.push({ name: ag?.name || '에이전트', idx: lastSpeakingAgentIdx, snippet: snippet + (text.length > 60 ? '…' : '') });
+    }
+    return results;
+  }
+
+  function showCriticisms(criticisms) {
+    const emptyEl = document.getElementById('ct-empty');
+    const list = document.getElementById('ct-list');
+    if (!list) return;
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    criticisms.forEach(c => {
+      // 에이전트 카드 지적 상태
+      const card = document.getElementById('ag-' + c.idx);
+      const statusEl = document.getElementById('ag-status-' + c.idx);
+      if (card) { card.classList.remove('speaking','done','critic-resolved'); card.classList.add('criticized'); }
+      if (statusEl) { statusEl.className = 'agent-status status-criticized'; statusEl.textContent = '지적'; }
+
+      // 트래커에 추가 (중복 방지)
+      if (!document.getElementById('ct-item-' + c.idx)) {
+        const item = document.createElement('div');
+        item.className = 'ct-item';
+        item.id = 'ct-item-' + c.idx;
+        item.innerHTML = `
+          <div class="ct-item-header">
+            <span class="ct-item-who">⚠ ${c.name}</span>
+            <span class="ct-item-status ct-status-pending" id="ct-status-${c.idx}">보완 대기</span>
+          </div>
+          <div class="ct-item-issue" id="ct-issue-${c.idx}"><strong>지적:</strong> ${c.snippet}</div>
+          <div class="ct-item-fix" id="ct-fix-${c.idx}"></div>`;
+        list.appendChild(item);
+      }
+    });
+  }
+
+  function resolveCriticism(agentIdx, fixText) {
+    const card = document.getElementById('ag-' + agentIdx);
+    if (!card || !card.classList.contains('criticized')) return;
+    card.classList.remove('criticized');
+    card.classList.add('critic-resolved');
+    const statusEl = document.getElementById('ag-status-' + agentIdx);
+    if (statusEl) { statusEl.className = 'agent-status status-done'; statusEl.textContent = '재분석'; }
+
+    // 트래커 아이템 해소 표시
+    const ctItem = document.getElementById('ct-item-' + agentIdx);
+    if (ctItem) {
+      ctItem.classList.add('resolved');
+      const ctStatus = document.getElementById('ct-status-' + agentIdx);
+      if (ctStatus) { ctStatus.className = 'ct-item-status ct-status-resolved'; ctStatus.textContent = '✓ 해소'; }
+      const ctFix = document.getElementById('ct-fix-' + agentIdx);
+      if (ctFix && fixText) {
+        const shortFix = fixText.replace(/<[^>]+>/g, '').slice(0, 80) + (fixText.length > 80 ? '…' : '');
+        ctFix.innerHTML = '<strong>보완:</strong> ' + shortFix;
+      } else if (ctFix) {
+        ctFix.innerHTML = '<strong>보완:</strong> 재조사 완료';
+      }
+    }
+  }
+
+  function resolveAllCriticisms() {
+    Object.values(AGENT_NAME_TO_IDX).forEach(idx => resolveCriticism(idx, '이의 없음 — 합의 완료'));
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  function addRoundDivider(roundNo) {
+    const div = document.createElement('div');
+    div.style.cssText = 'text-align:center;margin:20px 0;padding:8px 0;position:relative;';
+    div.innerHTML = `
+      <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--primary-lt);opacity:.3;"></div>
+      <span style="background:var(--bg);padding:4px 16px;position:relative;z-index:1;
+        font-size:13px;font-weight:700;color:var(--primary);
+        border:2px solid var(--primary-lt);border-radius:20px;
+        display:inline-block;">
+        🔄 ${roundNo}회차 재조사
+      </span>`;
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  // currentCompany 데이터에서 요청 바디 구성
+  const info = currentCompany ? currentCompany.company_info : null;
+  const fin  = currentCompany ? currentCompany.financial_statements : null;
+  const vat  = currentCompany ? currentCompany.vat_tax_certificate : null;
+
+  const body = {
+    company: {
+      name: info ? info.company_name : (document.getElementById('company-name')?.value || ''),
+      business_no: currentCompany ? currentCompany.biz_num : '',
+      industry: info ? (info.industry_code || '') : '',
+      founded_year: document.getElementById('found-year')?.value || '',
+      internal_credit_rating: info ? (info.internal_credit_rating || 'N/A') : 'N/A',
+    },
+    loan: {
+      amount: (document.getElementById('loan-amount')?.value || '').replace(/[^\d]/g, ''),
+      type: document.getElementById('loan-type')?.value || '',
+      term: document.getElementById('loan-term')?.value || '',
+      collateral_type: document.getElementById('collateral-type')?.value || '',
+      purpose: document.getElementById('loan-purpose')?.value || '',
+    },
+    documents: uploadedFiles.map(f => ({ name: f.name, type: f.type || 'pdf' })),
+    financial_statements: fin ? {
+      total_assets: fin.total_assets || 0,
+      total_liabilities: fin.total_liabilities || 0,
+      operating_income: fin.operating_income || 0,
+      finance_cost_interest: fin.finance_cost_interest || 1,
+      fiscal_year: fin.fiscal_year || '',
+      annual_revenue: vat ? (vat.annual_revenue_1yr || 0) : 0,
+    } : null,
+    sales_data: currentCompany && currentCompany.sales_data ? {
+      annual_sales_by_year: currentCompany.sales_data.annual_sales_by_year || {},
+    } : null,
+    collateral_auction_value: currentCompany && currentCompany.collateral_auction_value ? {
+      collateral_appraisal_value: currentCompany.collateral_auction_value.collateral_appraisal_value || 0,
+      regional_auction_rate_1yr: currentCompany.collateral_auction_value.regional_auction_rate_1yr || 0,
+      regional_auction_count_1yr: currentCompany.collateral_auction_value.regional_auction_count_1yr || 0,
+    } : null,
+  };
+
+  const typingEls = {};
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/analysis/discuss`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${errText.slice(0, 120)}`);
+    }
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (!payload) continue;
+
+        let evt;
+        try { evt = JSON.parse(payload); } catch { continue; }
+
+        if (evt.type === 'progress') {
+          fillEl.style.width = evt.pct + '%';
+          pctEl.textContent  = evt.pct + '%';
+          txtEl.textContent  = evt.phase || '분석 중...';
+        }
+        else if (evt.type === 'round') {
+          document.getElementById('round-label').textContent = `${evt.round} / ${evt.max} 라운드`;
+          addRoundDivider(evt.round);
+          // 새 라운드: 모든 agent 상태 초기화
+          AGENTS.forEach((_, i) => setAgentStatus(i, 'wait'));
+        }
+        else if (evt.type === 'agent_message') {
+          const idx = evt.agent_idx;
+          if (evt.is_typing) {
+            setAgentStatus(idx, 'speaking');
+            typingEls[idx] = addTyping(idx);
+          } else if (evt.text) {
+            if (typingEls[idx]) {
+              replaceTyping(typingEls[idx], idx, evt.text);
+              typingEls[idx] = null;
+            }
+            setAgentStatus(idx, 'done');
+          }
+        }
+        else if (evt.type === 'items_ready') {
+          // 백엔드 항목 → 프론트 형식으로 변환하여 ITEMS_DATA 교체
+          ITEMS_DATA = (evt.items || []).map((item, i) => ({
+            id: item.id,
+            name: item.name,
+            grade: item.grade,
+            doc_status: item.doc_status,
+            show_doc_badge: item.show_doc_badge !== false,
+            opinion: item.opinion || '',
+            hint: ITEMS_HINTS[i] || '',
+            evidence: (item.evidence || []).map(ev => ({
+              doc: ev.doc || '',
+              quote: ev.quote || '',
+              loc: ev.location || ev.loc || '',
+            })),
+            reinforcedPersuasion: null,
+            reinforcedDocuments: null,
+            externalSources: null,
+          }));
+
+          fillEl.style.width = '100%';
+          pctEl.textContent  = '100%';
+          txtEl.textContent  = '토론 완료 — 9개 항목 초안 생성됨';
+          document.getElementById('round-label').textContent = '완료';
+          AGENTS.forEach((_, i) => setAgentStatus(i, 'done'));
+          discussionComplete = true;
+          buildItemsHTML();
+          setTimeout(() => _gotoStep(3), 1200);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Discussion API 오류:', err);
+    // 에러 메시지를 채팅창에 표시
+    const wrap = document.createElement('div');
+    wrap.className = 'bubble-wrap';
+    wrap.innerHTML = `
+      <div class="bubble-body">
+        <div class="bubble critic">⚠️ 백엔드 연결 오류: ${err.message}<br>백엔드 서버(포트 8000)가 실행 중인지 확인하세요.</div>
+      </div>`;
+    chatEl.appendChild(wrap);
+    fillEl.style.width = '0%';
+    pctEl.textContent  = '0%';
+    txtEl.textContent  = '오류 발생';
+  }
+}
+
+// ── SCREEN 3: ITEMS ──────────────────────────────────────────────────────────
+function buildItemsHTML() {
+  const container = document.getElementById('items-list');
+  container.innerHTML = '';
+
+  // update side-panel company summary from currentCompany
+  if (currentCompany) {
+    const info = currentCompany.company_info;
+    const months = currentCompany.vat_tax_certificate.business_period_months;
+    const foundYear = 2025 - Math.round(months / 12);
+    const age = 2025 - foundYear;
+    const industryEntry = INDUSTRY_MAP[info.industry_code] || { detail: '제조업' };
+    const nameEl = document.getElementById('s3-company-name');
+    const ceoEl = document.getElementById('s3-ceo');
+    const industryEl = document.getElementById('s3-industry');
+    const foundedEl = document.getElementById('s3-founded');
+    if (nameEl) nameEl.textContent = info.company_name;
+    if (ceoEl) ceoEl.textContent = document.getElementById('ceo-name').value || '—';
+    if (industryEl) industryEl.textContent = industryEntry.detail;
+    if (foundedEl) foundedEl.textContent = foundYear + '년 (업력 ' + age + '년)';
+  }
+
+  // update side-panel counts
+  const sufCount = ITEMS_DATA.filter(it => it.show_doc_badge && it.doc_status === '충족').length;
+  const insufCount = ITEMS_DATA.filter(it => it.show_doc_badge && it.doc_status === '부족').length;
+  const gradeH = ITEMS_DATA.filter(it => it.grade === '상').length;
+  const gradeM = ITEMS_DATA.filter(it => it.grade === '중').length;
+  const gradeL = ITEMS_DATA.filter(it => it.grade === '하').length;
+  const sufEl = document.getElementById('doc-suf-count');
+  const insufEl = document.getElementById('doc-insuf-count');
+  if (sufEl) sufEl.textContent = sufCount + '개 항목';
+  if (insufEl) insufEl.textContent = insufCount + '개 항목';
+  const ghEl = document.getElementById('grade-h-count');
+  const gmEl = document.getElementById('grade-m-count');
+  const glEl = document.getElementById('grade-l-count');
+  if (ghEl) ghEl.textContent = gradeH;
+  if (gmEl) gmEl.textContent = gradeM;
+  if (glEl) glEl.textContent = gradeL;
+
+  ITEMS_DATA.forEach((item, i) => {
+    // 설득력 badge (grade)
+    let gradeEl;
+    if (item.grade === null) {
+      // No grade initially — will appear after user types
+      gradeEl = `<div id="grade-badge-wrap-${item.id}" style="display:none;">
+           <div class="badge-reinforce-wrap">
+             <div class="badge badge-m grade-badge" id="grade-badge-${item.id}">설득력 중</div>
+             <button class="reinforce-btn risk" onclick="event.stopPropagation();triggerReinforce('persuasion','${item.name}')" aria-label="설득력 보강">⚡ 설득력 보강</button>
+           </div></div>`;
+    } else {
+      const gc = item.grade === '상' ? 'badge-h' : item.grade === '중' ? 'badge-m' : 'badge-l';
+      gradeEl = `<div id="grade-badge-wrap-${item.id}">
+           <div class="badge-reinforce-wrap">
+             <div class="badge ${gc} grade-badge" id="grade-badge-${item.id}">설득력 ${item.grade}</div>
+             <button class="reinforce-btn risk" onclick="event.stopPropagation();triggerReinforce('persuasion','${item.name}')" aria-label="설득력 보강">⚡ 설득력 보강</button>
+           </div></div>`;
+    }
+
+    // 징구서류 badge (doc_status) — only if show_doc_badge
+    let docEl = '';
+    if (item.show_doc_badge) {
+      if (item.doc_status === '부족') {
+        docEl = `<div class="badge-reinforce-wrap">
+           <div class="badge badge-insuf">징구서류 부족</div>
+           <button class="reinforce-btn data" onclick="event.stopPropagation();triggerReinforce('documents','${item.name}')" aria-label="서류 보강">📥 서류 보강</button>
+         </div>`;
+      } else {
+        docEl = `<div class="badge badge-suf">징구서류 충족</div>`;
+      }
+    }
+
+    const evidenceHtml = item.evidence.map(ev =>
+      `<div class="evidence-chip" tabindex="0" role="button" aria-label="${ev.doc} 인용 보기">
+         📎 ${ev.doc}
+         <div class="chip-tooltip"><strong>${ev.doc}</strong><br>${ev.quote}<br><span style="color:#90A4AE">${ev.loc}</span></div>
+       </div>`
+    ).join('');
+
+    const hintHtml = item.hint
+      ? `<div class="ai-hint" id="hint-${item.id}"><span class="ai-icon">🤖</span><span id="hint-text-${item.id}">${item.hint}</span></div>`
+      : `<div class="ai-hint" id="hint-${item.id}" style="display:none;"><span class="ai-icon">🤖</span><span id="hint-text-${item.id}"></span></div>`;
+
+    const placeholder = item.id === 2 ? '자금용도의 구체적인 내용을 입력하세요...'
+                       : item.id === 9 ? '현장 방문 내용 및 특별의견을 입력하세요...'
+                       : '';
+
+    const el = document.createElement('div');
+    el.className = 'item-card' + (i === 0 ? ' open' : '');
+    el.id = 'item-' + item.id;
+    el.innerHTML = `
+      <div class="item-header" onclick="toggleItem(${item.id})" role="button" tabindex="0"
+           aria-expanded="${i === 0}" aria-controls="item-body-${item.id}">
+        <div class="item-num" aria-hidden="true">${item.id}</div>
+        <div class="item-name">${item.name}</div>
+        <div class="badge-row">
+          ${gradeEl}
+          ${docEl}
+        </div>
+        <div class="item-chevron" aria-hidden="true">▼</div>
+      </div>
+      <div class="item-body" id="item-body-${item.id}">
+        <div class="opinion-editor" id="ta-${item.id}"
+          contenteditable="true"
+          data-placeholder="${placeholder}"
+          aria-label="${item.name} 심사의견 입력"
+          oninput="onOpinionInput(${item.id})">${item.opinion}</div>
+        ${hintHtml}
+        <div class="evidence-section">
+          <div class="evidence-label">근거 문서</div>
+          <div class="evidence-chips">${evidenceHtml}</div>
+        </div>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+function toggleItem(id) {
+  const card = document.getElementById('item-' + id);
+  card.classList.toggle('open');
+  const header = card.querySelector('.item-header');
+  header.setAttribute('aria-expanded', card.classList.contains('open'));
+}
+
+function expandAll() {
+  document.querySelectorAll('.item-card').forEach(c => c.classList.add('open'));
+}
+
+// ── REAL-TIME OPINION ANALYSIS ───────────────────────────────────────────────
+function analyzeOpinionContent(itemId, text) {
+  const keywords = ITEM_KEYWORDS[itemId] || [];
+  const found = keywords.filter(k => text.includes(k)).length;
+  const grade = found >= 4 ? '상' : found >= 2 ? '중' : '하';
+
+  // detect unreasonable numbers (e.g. 부채비율 > 500%)
+  let warning = null;
+  const debtMatch = text.match(/부채비율\s*(\d+(\.\d+)?)\s*%/);
+  if (debtMatch && parseFloat(debtMatch[1]) > 500) {
+    warning = `부채비율 ${debtMatch[1]}%는 비정상적으로 높은 수치입니다. 수치를 확인해 주세요.`;
+  }
+  const dscrMatch = text.match(/DSCR\s*(\d+(\.\d+)?)/);
+  if (dscrMatch) {
+    const val = parseFloat(dscrMatch[1]);
+    if (val < 0.3 || val > 10) warning = `DSCR ${val}은 비정상적인 수치입니다. 수치를 확인해 주세요.`;
+  }
+
+  const missingKeyword = keywords.find(k => !text.includes(k));
+  const hint = missingKeyword
+    ? `"${missingKeyword}"을(를) 넣으면 설득력이 높아집니다.`
+    : '모든 핵심 키워드가 포함되어 있습니다. 설득력이 충분합니다.';
+
+  return { grade, hint, warning };
+}
+
+function onOpinionInput(itemId) {
+  const editorEl = document.getElementById('ta-' + itemId);
+  if (!editorEl) return;
+  const text = editorEl.innerText || '';
+  if (!text.trim()) {
+    // Empty → hide grade badge
+    const wrap = document.getElementById('grade-badge-wrap-' + itemId);
+    if (wrap) wrap.style.display = 'none';
+    const hintEl = document.getElementById('hint-' + itemId);
+    if (hintEl) { hintEl.classList.remove('show', 'warning'); }
+    return;
+  }
+  const { grade, hint, warning } = analyzeOpinionContent(itemId, text);
+  updateGradeBadge(itemId, grade);
+
+  const hintEl = document.getElementById('hint-' + itemId);
+  const hintTextEl = document.getElementById('hint-text-' + itemId);
+  if (hintEl && hintTextEl) {
+    if (warning) {
+      hintTextEl.textContent = warning;
+      hintEl.classList.remove('show');
+      hintEl.classList.add('show', 'warning');
+    } else {
+      hintTextEl.textContent = hint;
+      hintEl.classList.remove('warning');
+      hintEl.classList.add('show');
+    }
+    hintEl.style.display = '';
+  }
+}
+
+function updateGradeBadge(itemId, grade) {
+  const item = ITEMS_DATA.find(it => it.id === itemId);
+  if (item) item.grade = grade;
+  const wrap = document.getElementById('grade-badge-wrap-' + itemId);
+  const badge = document.getElementById('grade-badge-' + itemId);
+  if (!badge) return;
+  if (wrap) wrap.style.display = '';
+  badge.className = 'badge grade-badge ' + (grade === '상' ? 'badge-h' : grade === '중' ? 'badge-m' : 'badge-l');
+  badge.textContent = '설득력 ' + grade;
+}
+
+function applyReinforcement(type, itemName) {
+  const item = ITEMS_DATA.find(it => it.name === itemName);
+  if (!item) return;
+  const editorEl = document.getElementById('ta-' + item.id);
+  if (!editorEl) return;
+  const content = type === 'persuasion' ? item.reinforcedPersuasion : item.reinforcedDocuments;
+  if (!content) return;
+  if (type === 'documents') {
+    editorEl.innerHTML = editorEl.innerHTML + '<br><br>' + content;
+  } else {
+    editorEl.innerHTML = content;
+  }
+  // flash highlight
+  editorEl.style.background = '#FFFDE7';
+  setTimeout(() => { editorEl.style.background = ''; }, 1000);
+  // 보강 후에는 onOpinionInput을 호출하지 않음 — 백엔드 grade를 유지
+}
+
+function showNoReinforceToast(msg) {
+  const el = document.getElementById('toast-br');
+  const msgEl = document.getElementById('toast-br-msg');
+  if (!el || !msgEl) return;
+  msgEl.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+async function triggerReinforce(type, itemName) {
+  const item = ITEMS_DATA.find(it => it.name === itemName);
+  if (!item) return;
+
+  if (type === 'persuasion' && item.grade === '상') {
+    showNoReinforceToast('이미 최고 등급입니다. 설득력을 더 높일 수 없습니다.');
+    return;
+  }
+  if (type === 'documents' && item.doc_status === '충족') {
+    showNoReinforceToast('징구서류가 이미 충족되어 있습니다.');
+    return;
+  }
+
+  const overlay = document.getElementById('reinforce-overlay');
+  const title   = document.getElementById('reinforce-title');
+  const rs1     = document.getElementById('rs-1');
+  const rs2     = document.getElementById('rs-2');
+
+  title.textContent = type === 'documents' ? '📥 서류 보강 중...' : '⚡ 설득력 보강 중...';
+  rs1.className = 'reinforce-step active';
+  rs1.textContent = '🔍 외부 자료 검색 중';
+  rs2.className = 'reinforce-step';
+  rs2.textContent = '📝 보강 문구 생성 중';
+  overlay.classList.add('show');
+
+  const editorEl = document.getElementById('ta-' + item.id);
+  const curOpinion = editorEl
+    ? editorEl.innerText.slice(0, 500)
+    : (item.opinion || '').replace(/<[^>]+>/g, '').slice(0, 500);
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/analysis/reinforce`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_id: item.id,
+        item_name: item.name,
+        reinforce_type: type,
+        current_opinion: curOpinion,
+        company_name: currentCompany?.company_info?.company_name || '',
+        industry_name: (function() {
+          const code = currentCompany?.company_info?.industry_code || '';
+          const entry = INDUSTRY_MAP[code];
+          return entry ? entry.detail : '';
+        })(),
+        dart_code: currentCompany?.company_info?.dart_code || '',
+      }),
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let evt;
+        try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (evt.type === 'step') {
+          if (evt.step === '외부 자료 검색') {
+            if (evt.status === 'active') {
+              rs1.className = 'reinforce-step active';
+              rs1.textContent = '🔍 외부 자료 검색 중';
+            } else {
+              rs1.className = 'reinforce-step done';
+              const tags = [];
+              if (evt.dart_found) tags.push('DART 자료');
+              if (evt.web_found) tags.push('웹검색 자료');
+              rs1.textContent = tags.length
+                ? `✓ 수집완료 (${tags.join(', ')})`
+                : '— 외부 자료 없음';
+              rs2.className = 'reinforce-step active';
+              rs2.textContent = '📝 보강 문구 생성 중';
+            }
+          } else if (evt.step === '보강 워딩 생성') {
+            if (evt.status === 'done') {
+              rs2.className = 'reinforce-step done';
+              rs2.textContent = '✓ 보강 문구 생성 완료';
+            }
+          }
+        }
+        else if (evt.type === 'complete') {
+          overlay.classList.remove('show');
+          // 받은 내용을 item에 저장하고 적용
+          if (type === 'persuasion') {
+            item.reinforcedPersuasion = evt.reinforced_opinion;
+          } else {
+            item.reinforcedDocuments = evt.reinforced_opinion;
+          }
+          // 외부자료 출처 저장
+          if (evt.sources && evt.sources.length > 0) {
+            item.externalSources = evt.sources;
+            showExternalSourceBtn(item.id);
+          }
+          applyReinforcement(type, itemName);
+          // 등급 업데이트
+          if (evt.new_grade && type === 'persuasion') {
+            item.grade = evt.new_grade;
+            updateGradeBadge(item.id, evt.new_grade);
+          }
+          showToast(`"${itemName}" 보강이 완료되었습니다.`, '✓');
+        }
+        else if (evt.type === 'no_reinforce') {
+          overlay.classList.remove('show');
+          showNoReinforceToast(evt.reason || `"${itemName}" 항목은 현재 보강할 내용이 없습니다.`);
+        }
+      }
+    }
+  } catch (err) {
+    overlay.classList.remove('show');
+    showNoReinforceToast(`보강 오류: ${err.message}`);
+    console.error('Reinforce API 오류:', err);
+  }
+}
+
+function saveTemp() {
+  showToast("임시 저장되었습니다.", "💾");
+}
+
+// ── 외부자료 버튼 & 모달 ─────────────────────────────────────────────────────
+function showExternalSourceBtn(itemId) {
+  const badgeRow = document.querySelector(`#item-${itemId} .badge-row`);
+  if (!badgeRow) return;
+  if (badgeRow.querySelector('.ext-source-btn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'reinforce-btn ext-source-btn';
+  btn.innerHTML = '📄 외부자료';
+  btn.style.cssText = 'background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9;margin-right:6px;';
+  btn.onclick = function(e) { e.stopPropagation(); openExternalSources(itemId); };
+  badgeRow.insertBefore(btn, badgeRow.firstChild);
+}
+
+function openExternalSources(itemId) {
+  const item = ITEMS_DATA.find(it => it.id === itemId);
+  if (!item || !item.externalSources || item.externalSources.length === 0) {
+    showNoReinforceToast('외부자료가 없습니다.');
+    return;
+  }
+  const modal = document.getElementById('ext-source-modal');
+  const body = document.getElementById('ext-source-body');
+  const title = document.getElementById('ext-source-title');
+  title.textContent = `📄 ${item.name} — 외부자료 근거`;
+  body.innerHTML = item.externalSources.map(s => {
+    const icon = s.type === 'DART' ? '📊' : s.type === '산업동향' ? '📈' : '🌐';
+    const badgeCls = s.type === 'DART' ? 'background:#FFF3E0;color:#E65100;'
+      : s.type === '산업동향' ? 'background:#E8EAF6;color:#283593;'
+      : 'background:#E8F5E9;color:#2E7D32;';
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-bottom:1px solid #F0F0F0;">
+      <span style="font-size:18px;">${icon}</span>
+      <div style="flex:1;">
+        <span style="display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;${badgeCls}font-weight:600;margin-bottom:4px;">${s.type}</span>
+        <div style="font-size:13px;color:#333;line-height:1.5;margin-top:4px;">${s.content}</div>
+      </div>
+    </div>`;
+  }).join('');
+  modal.classList.add('show');
+}
+
+// ── MODALS ───────────────────────────────────────────────────────────────────
+function openPreviewModal() {
+  buildPreview();
+  document.getElementById('preview-modal').classList.add('show');
+}
+
+function buildPreview() {
+  const body = document.getElementById('preview-body');
+  const itemsHtml = ITEMS_DATA.map(item => {
+    const gradeClass = item.grade === '상' ? 'badge-h' : item.grade === '중' ? 'badge-m' : 'badge-l';
+    return `
+      <div class="preview-item">
+        <div class="preview-item-header">
+          <span>${item.id}. ${item.name}</span>
+          <span class="badge ${gradeClass}" style="margin-left:auto;">등급 ${item.grade}</span>
+        </div>
+        <div class="preview-item-body">${(document.getElementById('ta-' + item.id) || {innerHTML: item.opinion}).innerHTML || item.opinion}</div>
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="preview-header">
+      <div class="preview-bank">BNK경남은행 여신심사부</div>
+      <div class="preview-title">여신심사 요청서 (초안)</div>
+      <div class="preview-meta">접수번호: REQ-2026-06190047 &nbsp;|&nbsp; 작성일: 2026-06-19 &nbsp;|&nbsp; 담당 심사역: 박민준</div>
+    </div>
+    <div class="preview-info-grid">
+      <div class="preview-info-cell"><span class="pik">기업명</span>한양정밀테크</div>
+      <div class="preview-info-cell"><span class="pik">대표자</span>—</div>
+      <div class="preview-info-cell"><span class="pik">신청금액</span>15억 원</div>
+      <div class="preview-info-cell"><span class="pik">기간</span>36개월</div>
+      <div class="preview-info-cell"><span class="pik">대출유형</span>시설자금대출</div>
+      <div class="preview-info-cell"><span class="pik">담보유형</span>혼합(부동산+신용)</div>
+    </div>
+    <div class="preview-section-title">심사 항목별 의견</div>
+    ${itemsHtml}
+    <div style="margin-top:16px;padding:12px;background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;font-size:11px;color:#795548;">
+      ⚠️ 본 문서는 AI가 생성한 초안입니다. 최종 심사 결정은 담당 심사역이 수행합니다.
+    </div>`;
+}
+
+function openSubmitConfirm() {
+  document.getElementById('submit-confirm').classList.add('show');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function doSubmit() {
+  closeModal('submit-confirm');
+  showToast("제출 중...", "📨");
+  setTimeout(() => {
+    discussionComplete = true;
+    _gotoStep(4);
+  }, 800);
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg, icon) {
+  const el = document.getElementById('toast');
+  const msgEl = document.getElementById('toast-msg');
+  const iconEl = document.getElementById('toast-icon');
+  msgEl.textContent = msg;
+  iconEl.textContent = icon || '✓';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function init() {
+  // Pre-fill biz num for demo (한양정밀테크)
+  setTimeout(() => {
+    const el = document.getElementById('biz-num');
+    if (el) {
+      el.value = '123-45-67890';
+      formatBizNum(el);
+      lookupCompany();
+    }
+  }, 300);
+})();
+</script>
+</body>
+</html>
